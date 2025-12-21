@@ -28,22 +28,22 @@
             </div>
 
             <div class="auth-tabs">
-                <button class="tab-btn active" data-tab="login">Вход</button>
-                <button class="tab-btn" data-tab="register">Регистрация</button>
+                <button type="button" class="tab-btn active" data-tab="login">Вход</button>
+                <button type="button" class="tab-btn" data-tab="register">Регистрация</button>
                 <div class="tab-indicator"></div>
             </div>
 
             <form class="auth-form" id="loginForm">
                 <div class="input-group">
-                    <input type="email" id="loginEmail" required placeholder=" ">
+                    <input type="email" id="loginEmail" required autocomplete="email">
                     <label>Email</label>
                     <div class="input-highlight"></div>
                 </div>
                 <div class="input-group">
-                    <input type="password" id="loginPassword" required placeholder=" ">
+                    <input type="password" id="loginPassword" required autocomplete="current-password">
                     <label>Пароль</label>
                     <div class="input-highlight"></div>
-                    <button type="button" class="password-toggle" onclick="togglePassword('loginPassword')">
+                    <button type="button" class="password-toggle" data-target="loginPassword">
                         <svg class="eye-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
                             <circle cx="12" cy="12" r="3"/>
@@ -58,25 +58,25 @@
 
             <form class="auth-form hidden" id="registerForm">
                 <div class="input-group">
-                    <input type="text" id="registerDisplayName" required placeholder=" " minlength="2" maxlength="32">
+                    <input type="text" id="registerDisplayName" required minlength="2" maxlength="32" autocomplete="name">
                     <label>Отображаемое имя</label>
                     <div class="input-highlight"></div>
                 </div>
                 <div class="input-group">
-                    <input type="text" id="registerUsername" required placeholder=" " pattern="[a-zA-Z0-9_]+" minlength="3" maxlength="20">
-                    <label>Юзернейм (только a-z, 0-9, _)</label>
+                    <input type="text" id="registerUsername" required minlength="3" maxlength="20" autocomplete="username">
+                    <label>Юзернейм (a-z, 0-9, _)</label>
                     <div class="input-highlight"></div>
                 </div>
                 <div class="input-group">
-                    <input type="email" id="registerEmail" required placeholder=" ">
+                    <input type="email" id="registerEmail" required autocomplete="email">
                     <label>Email</label>
                     <div class="input-highlight"></div>
                 </div>
                 <div class="input-group">
-                    <input type="password" id="registerPassword" required placeholder=" " minlength="6">
+                    <input type="password" id="registerPassword" required minlength="6" autocomplete="new-password">
                     <label>Пароль (мин. 6 символов)</label>
                     <div class="input-highlight"></div>
-                    <button type="button" class="password-toggle" onclick="togglePassword('registerPassword')">
+                    <button type="button" class="password-toggle" data-target="registerPassword">
                         <svg class="eye-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
                             <circle cx="12" cy="12" r="3"/>
@@ -84,7 +84,7 @@
                     </button>
                 </div>
                 <div class="input-group">
-                    <input type="password" id="registerPasswordConfirm" required placeholder=" " minlength="6">
+                    <input type="password" id="registerPasswordConfirm" required minlength="6" autocomplete="new-password">
                     <label>Подтвердите пароль</label>
                     <div class="input-highlight"></div>
                 </div>
@@ -114,13 +114,13 @@
                 </div>
             </div>
             <nav class="sidebar-nav">
-                <button class="nav-item active" data-section="chats">
+                <button type="button" class="nav-item active" data-section="chats">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
                     </svg>
                     <span>Чаты</span>
                 </button>
-                <button class="nav-item" data-section="friends">
+                <button type="button" class="nav-item" data-section="friends">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
                         <circle cx="9" cy="7" r="4"/>
@@ -129,7 +129,7 @@
                     </svg>
                     <span>Друзья</span>
                 </button>
-                <button class="nav-item" data-section="settings">
+                <button type="button" class="nav-item" data-section="settings">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="12" cy="12" r="3"/>
                         <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
@@ -146,7 +146,7 @@
                         <span class="user-displayname" id="userDisplayName">Пользователь</span>
                         <span class="user-username" id="userUsername">@username</span>
                     </div>
-                    <button class="user-menu-btn" id="userMenuBtn">
+                    <button type="button" class="user-menu-btn" id="userMenuBtn">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <circle cx="12" cy="12" r="1"/>
                             <circle cx="12" cy="5" r="1"/>
@@ -155,14 +155,14 @@
                     </button>
                 </div>
                 <div class="user-menu glass-panel hidden" id="userMenu">
-                    <button class="menu-item" id="editProfileBtn">
+                    <button type="button" class="menu-item" id="editProfileBtn">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
                             <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
                         </svg>
                         <span>Редактировать профиль</span>
                     </button>
-                    <button class="menu-item" id="copyIdBtn">
+                    <button type="button" class="menu-item" id="copyIdBtn">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
                             <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
@@ -170,7 +170,7 @@
                         <span>Скопировать ID</span>
                     </button>
                     <div class="menu-divider"></div>
-                    <button class="menu-item danger" id="logoutBtn">
+                    <button type="button" class="menu-item danger" id="logoutBtn">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
                             <polyline points="16 17 21 12 16 7"/>
@@ -186,7 +186,7 @@
             <section class="content-section active" id="chatsSection">
                 <div class="section-header glass-panel">
                     <h1>Чаты</h1>
-                    <button class="header-btn" id="newChatBtn">
+                    <button type="button" class="header-btn" id="newChatBtn">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <line x1="12" y1="5" x2="12" y2="19"/>
                             <line x1="5" y1="12" x2="19" y2="12"/>
@@ -209,7 +209,7 @@
             <section class="content-section hidden" id="friendsSection">
                 <div class="section-header glass-panel">
                     <h1>Друзья</h1>
-                    <button class="header-btn" id="addFriendBtn">
+                    <button type="button" class="header-btn" id="addFriendBtn">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
                             <circle cx="8.5" cy="7" r="4"/>
@@ -244,11 +244,11 @@
                         <div class="settings-item">
                             <div class="settings-label">
                                 <span class="label-title">ID аккаунта</span>
-                                <span class="label-desc">Уникальный идентификатор (нельзя изменить)</span>
+                                <span class="label-desc">Уникальный идентификатор</span>
                             </div>
                             <div class="settings-value">
-                                <code id="settingsUserId">...</code>
-                                <button class="copy-btn" onclick="copyUserId()">
+                                <code id="settingsUserId">загрузка...</code>
+                                <button type="button" class="copy-btn" id="copyUserIdBtn">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                         <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
                                         <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
@@ -263,7 +263,7 @@
                             </div>
                             <div class="settings-value">
                                 <span id="settingsUsername">@username</span>
-                                <button class="edit-btn" onclick="openUsernameModal()">Изменить</button>
+                                <button type="button" class="edit-btn" id="editUsernameBtn">Изменить</button>
                             </div>
                         </div>
                         <div class="settings-item">
@@ -273,7 +273,7 @@
                             </div>
                             <div class="settings-value">
                                 <span id="settingsDisplayName">Имя</span>
-                                <button class="edit-btn" onclick="openDisplayNameModal()">Изменить</button>
+                                <button type="button" class="edit-btn" id="editDisplayNameBtn">Изменить</button>
                             </div>
                         </div>
                         <div class="settings-item">
@@ -295,23 +295,7 @@
                                 <span class="label-desc">Изменить пароль аккаунта</span>
                             </div>
                             <div class="settings-value">
-                                <button class="edit-btn" onclick="openPasswordModal()">Изменить</button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="settings-group glass-card">
-                        <h2>Внешний вид</h2>
-                        <div class="settings-item">
-                            <div class="settings-label">
-                                <span class="label-title">Тема</span>
-                                <span class="label-desc">Выберите тему оформления</span>
-                            </div>
-                            <div class="settings-value">
-                                <div class="theme-switcher">
-                                    <button class="theme-btn active" data-theme="dark">Тёмная</button>
-                                    <button class="theme-btn" data-theme="light">Светлая</button>
-                                </div>
+                                <button type="button" class="edit-btn" id="editPasswordBtn">Изменить</button>
                             </div>
                         </div>
                     </div>
@@ -324,7 +308,7 @@
         <div class="modal glass-card" id="modal">
             <div class="modal-header">
                 <h2 id="modalTitle">Заголовок</h2>
-                <button class="modal-close" onclick="closeModal()">
+                <button type="button" class="modal-close" id="modalCloseBtn">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <line x1="18" y1="6" x2="6" y2="18"/>
                         <line x1="6" y1="6" x2="18" y2="18"/>
