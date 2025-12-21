@@ -1,6 +1,11 @@
 var AuthService = {
     register: function(email, password, username, displayName) {
         return new Promise(function(resolve) {
+            if (!AuthService.validateEmail(email)) {
+                resolve({ success: false, error: 'Введите корректный email адрес' });
+                return;
+            }
+
             db.collection('usernames').doc(username.toLowerCase()).get()
                 .then(function(usernameDoc) {
                     if (usernameDoc.exists) {
@@ -12,6 +17,14 @@ var AuthService = {
                         .then(function(userCredential) {
                             var user = userCredential.user;
 
+                            user.sendEmailVerification()
+                                .then(function() {
+                                    console.log("Verification email sent");
+                                })
+                                .catch(function(error) {
+                                    console.error("Error sending verification email:", error);
+                                });
+
                             var userData = {
                                 id: user.uid,
                                 email: email,
@@ -20,7 +33,8 @@ var AuthService = {
                                 createdAt: firebase.firestore.FieldValue.serverTimestamp(),
                                 updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
                                 avatar: null,
-                                status: 'online',
+                                status: 'offline',
+                                emailVerified: false,
                                 friends: [],
                                 friendRequests: []
                             };
@@ -31,7 +45,7 @@ var AuthService = {
 
                             batch.commit()
                                 .then(function() {
-                                    resolve({ success: true, user: userData });
+                                    resolve({ success: true, user: userData, needsVerification: true });
                                 })
                                 .catch(function(error) {
                                     console.error("Batch error:", error);
@@ -52,13 +66,31 @@ var AuthService = {
 
     login: function(email, password) {
         return new Promise(function(resolve) {
+            if (!AuthService.validateEmail(email)) {
+                resolve({ success: false, error: 'Введите корректный email адрес' });
+                return;
+            }
+
             auth.signInWithEmailAndPassword(email, password)
                 .then(function(userCredential) {
-                    db.collection('users').doc(userCredential.user.uid).get()
+                    var user = userCredential.user;
+
+                    if (!user.emailVerified) {
+                        resolve({ 
+                            success: false, 
+                            error: 'Подтвердите email для входа',
+                            needsVerification: true,
+                            email: email
+                        });
+                        return;
+                    }
+
+                    db.collection('users').doc(user.uid).get()
                         .then(function(userDoc) {
                             if (userDoc.exists) {
-                                db.collection('users').doc(userCredential.user.uid).update({
+                                db.collection('users').doc(user.uid).update({
                                     status: 'online',
+                                    emailVerified: true,
                                     lastSeen: firebase.firestore.FieldValue.serverTimestamp()
                                 });
                                 resolve({ success: true, user: userDoc.data() });
@@ -75,6 +107,52 @@ var AuthService = {
                     console.error("Login error:", error);
                     resolve({ success: false, error: AuthService.translateError(error) });
                 });
+        });
+    },
+
+    resendVerificationEmail: function() {
+        return new Promise(function(resolve) {
+            var user = auth.currentUser;
+            if (user) {
+                user.sendEmailVerification()
+                    .then(function() {
+                        resolve({ success: true });
+                    })
+                    .catch(function(error) {
+                        console.error("Resend error:", error);
+                        resolve({ success: false, error: 'Подождите перед повторной отправкой' });
+                    });
+            } else {
+                resolve({ success: false, error: 'Пользователь не найден' });
+            }
+        });
+    },
+
+    checkEmailVerification: function() {
+        return new Promise(function(resolve) {
+            var user = auth.currentUser;
+            if (user) {
+                user.reload()
+                    .then(function() {
+                        if (user.emailVerified) {
+                            db.collection('users').doc(user.uid).update({
+                                emailVerified: true,
+                                status: 'online'
+                            });
+                            db.collection('users').doc(user.uid).get()
+                                .then(function(userDoc) {
+                                    resolve({ success: true, verified: true, user: userDoc.data() });
+                                });
+                        } else {
+                            resolve({ success: true, verified: false });
+                        }
+                    })
+                    .catch(function(error) {
+                        resolve({ success: false, error: 'Ошибка проверки' });
+                    });
+            } else {
+                resolve({ success: false, error: 'Пользователь не найден' });
+            }
         });
     },
 
@@ -107,6 +185,10 @@ var AuthService = {
             var unsubscribe = auth.onAuthStateChanged(function(user) {
                 unsubscribe();
                 if (user) {
+                    if (!user.emailVerified) {
+                        resolve({ needsVerification: true, email: user.email });
+                        return;
+                    }
                     db.collection('users').doc(user.uid).get()
                         .then(function(userDoc) {
                             if (userDoc.exists) {
@@ -200,6 +282,11 @@ var AuthService = {
                     resolve({ success: false, error: AuthService.translateError(error) });
                 });
         });
+    },
+
+    validateEmail: function(email) {
+        var emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        return emailRegex.test(email);
     },
 
     translateError: function(error) {
