@@ -572,7 +572,10 @@ function loadFriends() {
 
     db.collection('users').doc(currentUser.id).get().then(function(doc) {
         var userData = doc.data();
-        var friendIds = userData.friends || [];
+        currentUser.friends = userData.friends || [];
+        currentUser.friendRequests = userData.friendRequests || [];
+        
+        var friendIds = currentUser.friends;
 
         if (friendIds.length === 0) {
             container.innerHTML = 
@@ -605,6 +608,9 @@ function loadFriends() {
             });
             initFriendItemButtons();
         });
+    }).catch(function(error) {
+        console.error("Load friends error:", error);
+        container.innerHTML = '<p class="error-text">Ошибка загрузки</p>';
     });
 }
 
@@ -750,42 +756,63 @@ function removeFriend(friendId) {
     if (!confirm('Удалить из друзей?')) return;
 
     var batch = db.batch();
+    var currentUserRef = db.collection('users').doc(currentUser.id);
+    var friendRef = db.collection('users').doc(friendId);
     
-    batch.update(db.collection('users').doc(currentUser.id), {
+    batch.update(currentUserRef, {
         friends: firebase.firestore.FieldValue.arrayRemove(friendId)
     });
     
-    batch.update(db.collection('users').doc(friendId), {
+    batch.update(friendRef, {
         friends: firebase.firestore.FieldValue.arrayRemove(currentUser.id)
     });
 
     batch.commit().then(function() {
+        if (currentUser.friends) {
+            currentUser.friends = currentUser.friends.filter(function(id) {
+                return id !== friendId;
+            });
+        }
+        
         showToast('Удалено из друзей', 'success');
         loadFriends();
     }).catch(function(error) {
-        console.error(error);
-        showToast('Ошибка удаления', 'error');
+        console.error("Remove friend error:", error);
+        showToast('Ошибка: ' + error.message, 'error');
     });
 }
-
 function acceptFriendRequest(requesterId) {
     var batch = db.batch();
+    var currentUserRef = db.collection('users').doc(currentUser.id);
+    var requesterRef = db.collection('users').doc(requesterId);
     
-    batch.update(db.collection('users').doc(currentUser.id), {
+    batch.update(currentUserRef, {
         friends: firebase.firestore.FieldValue.arrayUnion(requesterId),
         friendRequests: firebase.firestore.FieldValue.arrayRemove(requesterId)
     });
     
-    batch.update(db.collection('users').doc(requesterId), {
+    batch.update(requesterRef, {
         friends: firebase.firestore.FieldValue.arrayUnion(currentUser.id)
     });
 
     batch.commit().then(function() {
+        if (!currentUser.friends) {
+            currentUser.friends = [];
+        }
+        currentUser.friends.push(requesterId);
+        
+        if (currentUser.friendRequests) {
+            currentUser.friendRequests = currentUser.friendRequests.filter(function(id) {
+                return id !== requesterId;
+            });
+        }
+        
         showToast('Заявка принята!', 'success');
         loadFriendRequests();
+        loadFriends();
     }).catch(function(error) {
-        console.error(error);
-        showToast('Ошибка', 'error');
+        console.error("Accept friend request error:", error);
+        showToast('Ошибка: ' + error.message, 'error');
     });
 }
 
@@ -793,11 +820,17 @@ function declineFriendRequest(requesterId) {
     db.collection('users').doc(currentUser.id).update({
         friendRequests: firebase.firestore.FieldValue.arrayRemove(requesterId)
     }).then(function() {
+        if (currentUser.friendRequests) {
+            currentUser.friendRequests = currentUser.friendRequests.filter(function(id) {
+                return id !== requesterId;
+            });
+        }
+        
         showToast('Заявка отклонена', 'info');
         loadFriendRequests();
     }).catch(function(error) {
-        console.error(error);
-        showToast('Ошибка', 'error');
+        console.error("Decline friend request error:", error);
+        showToast('Ошибка: ' + error.message, 'error');
     });
 }
 
