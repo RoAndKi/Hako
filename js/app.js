@@ -749,38 +749,161 @@ function initRequestItemButtons() {
 }
 
 function openChat(friendId) {
-    showToast('Открытие чата...', 'info');
+    db.collection('users').doc(friendId).get().then(function(doc) {
+        if (!doc.exists) {
+            showToast('Пользователь не найден', 'error');
+            return;
+        }
+
+        var friend = doc.data();
+        
+        var chatSection = document.getElementById('chatsSection');
+        chatSection.innerHTML = 
+            '<div class="chat-container">' +
+                '<div class="chat-header glass-panel">' +
+                    '<button type="button" class="header-btn" id="backToChatsBtn">' +
+                        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' +
+                            '<line x1="19" y1="12" x2="5" y2="12"/>' +
+                            '<polyline points="12 19 5 12 12 5"/>' +
+                        '</svg>' +
+                    '</button>' +
+                    '<div class="friend-avatar"><span>' + friend.displayName.charAt(0).toUpperCase() + '</span></div>' +
+                    '<div class="chat-header-info">' +
+                        '<div class="chat-header-name">' + friend.displayName + '</div>' +
+                        '<div class="chat-header-status">@' + friend.username + '</div>' +
+                    '</div>' +
+                '</div>' +
+                '<div class="chat-messages" id="chatMessages">' +
+                    '<div class="empty-state">' +
+                        '<p>Начните общение с ' + friend.displayName + '</p>' +
+                    '</div>' +
+                '</div>' +
+                '<div class="chat-input-container">' +
+                    '<div class="chat-input-wrapper">' +
+                        '<input type="text" class="chat-input" id="chatInput" placeholder="Написать сообщение...">' +
+                        '<button type="button" class="chat-send-btn" id="sendMessageBtn">' +
+                            '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' +
+                                '<line x1="22" y1="2" x2="11" y2="13"/>' +
+                                '<polygon points="22 2 15 22 11 13 2 9 22 2"/>' +
+                            '</svg>' +
+                        '</button>' +
+                    '</div>' +
+                '</div>' +
+            '</div>';
+
+        document.getElementById('backToChatsBtn').addEventListener('click', function() {
+            showChatsListView();
+        });
+
+        document.getElementById('sendMessageBtn').addEventListener('click', function() {
+            sendMessage(friendId);
+        });
+
+        document.getElementById('chatInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                sendMessage(friendId);
+            }
+        });
+
+        document.querySelector('[data-section="chats"]').click();
+
+    }).catch(function(error) {
+        console.error(error);
+        showToast('Ошибка открытия чата', 'error');
+    });
+}
+
+
+function showChatsListView() {
+    var chatSection = document.getElementById('chatsSection');
+    chatSection.innerHTML = 
+        '<div class="section-header glass-panel">' +
+            '<h1>Чаты</h1>' +
+        '</div>' +
+        '<div class="section-content">' +
+            '<div class="empty-state">' +
+                '<div class="empty-icon">' +
+                    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">' +
+                        '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>' +
+                    '</svg>' +
+                '</div>' +
+                '<h3>Нет активных чатов</h3>' +
+                '<p>Добавьте друзей, чтобы начать общение</p>' +
+                '<button type="button" class="btn-primary" id="goToFriendsBtn">Найти друзей</button>' +
+            '</div>' +
+        '</div>';
+
+    var goToFriendsBtn = document.getElementById('goToFriendsBtn');
+    if (goToFriendsBtn) {
+        goToFriendsBtn.addEventListener('click', function() {
+            document.querySelector('[data-section="friends"]').click();
+        });
+    }
+}
+
+function sendMessage(friendId) {
+    var input = document.getElementById('chatInput');
+    var message = input.value.trim();
+    
+    if (!message) return;
+
+    var messagesContainer = document.getElementById('chatMessages');
+    
+    var emptyState = messagesContainer.querySelector('.empty-state');
+    if (emptyState) {
+        emptyState.remove();
+    }
+
+    var now = new Date();
+    var time = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
+
+    messagesContainer.innerHTML += 
+        '<div class="message sent">' +
+            '<div>' + escapeHtml(message) + '</div>' +
+            '<div class="message-time">' + time + '</div>' +
+        '</div>';
+
+    input.value = '';
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+
+function escapeHtml(text) {
+    var div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
 }
 
 function removeFriend(friendId) {
-    if (!confirm('Удалить из друзей?')) return;
+    openConfirmModal(
+        'Удалить из друзей?',
+        'Вы уверены, что хотите удалить этого пользователя из друзей?',
+        function() {
+            var batch = db.batch();
+            batch.update(db.collection('users').doc(currentUser.id), {
+                friends: firebase.firestore.FieldValue.arrayRemove(friendId)
+            });
+            batch.update(db.collection('users').doc(friendId), {
+                friends: firebase.firestore.FieldValue.arrayRemove(currentUser.id)
+            });
 
-    var batch = db.batch();
-    var currentUserRef = db.collection('users').doc(currentUser.id);
-    var friendRef = db.collection('users').doc(friendId);
-    
-    batch.update(currentUserRef, {
-        friends: firebase.firestore.FieldValue.arrayRemove(friendId)
-    });
-    
-    batch.update(friendRef, {
-        friends: firebase.firestore.FieldValue.arrayRemove(currentUser.id)
-    });
-
-    batch.commit().then(function() {
-        if (currentUser.friends) {
-            currentUser.friends = currentUser.friends.filter(function(id) {
-                return id !== friendId;
+            batch.commit().then(function() {
+                if (currentUser.friends) {
+                    currentUser.friends = currentUser.friends.filter(function(id) {
+                        return id !== friendId;
+                    });
+                }
+                closeModal();
+                showToast('Удалено из друзей', 'success');
+                loadFriends();
+            }).catch(function(error) {
+                console.error(error);
+                showToast('Ошибка удаления', 'error');
             });
         }
-        
-        showToast('Удалено из друзей', 'success');
-        loadFriends();
-    }).catch(function(error) {
-        console.error("Remove friend error:", error);
-        showToast('Ошибка: ' + error.message, 'error');
-    });
+    );
 }
+
+
 function acceptFriendRequest(requesterId) {
     var batch = db.batch();
     var currentUserRef = db.collection('users').doc(currentUser.id);
@@ -1177,6 +1300,22 @@ function openAddFriendModal() {
     });
 }
 
+function openConfirmModal(title, message, onConfirm) {
+    var content = 
+        '<div class="confirm-modal-content">' +
+            '<p>' + message + '</p>' +
+            '<div class="modal-actions">' +
+                '<button type="button" class="modal-btn secondary" id="cancelConfirmBtn">Отмена</button>' +
+                '<button type="button" class="modal-btn danger" id="confirmBtn">Удалить</button>' +
+            '</div>' +
+        '</div>';
+    
+    openModal(title, content);
+
+    document.getElementById('cancelConfirmBtn').addEventListener('click', closeModal);
+    document.getElementById('confirmBtn').addEventListener('click', onConfirm);
+}
+
 function sendFriendRequest(targetUserId) {
     var resultDiv = document.getElementById('searchResult');
     if (resultDiv) {
@@ -1185,21 +1324,21 @@ function sendFriendRequest(targetUserId) {
 
     db.collection('users').doc(targetUserId).get().then(function(doc) {
         if (!doc.exists) {
-            showToast('Пользователь не найден', 'error');
+            if (resultDiv) resultDiv.innerHTML = '<p class="search-error">Пользователь не найден</p>';
             return Promise.reject('not_found');
         }
 
         var targetUser = doc.data();
         
         if (targetUser.friends && targetUser.friends.includes(currentUser.id)) {
-            showToast('Вы уже друзья', 'info');
             closeModal();
+            showToast('Вы уже друзья', 'info');
             return Promise.reject('already_friends');
         }
 
         if (targetUser.friendRequests && targetUser.friendRequests.includes(currentUser.id)) {
-            showToast('Заявка уже отправлена ранее', 'info');
             closeModal();
+            showToast('Заявка уже отправлена ранее', 'info');
             return Promise.reject('already_sent');
         }
 
@@ -1213,7 +1352,7 @@ function sendFriendRequest(targetUserId) {
         if (error === 'not_found' || error === 'already_friends' || error === 'already_sent') {
             return;
         }
-        console.error("Send friend request error:", error);
-        showToast('Ошибка отправки заявки', 'error');
+        console.error(error);
+        if (resultDiv) resultDiv.innerHTML = '<p class="search-error">Ошибка отправки</p>';
     });
 }
