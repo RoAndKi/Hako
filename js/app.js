@@ -1145,13 +1145,34 @@ function openAddFriendModal() {
 }
 
 function sendFriendRequest(targetUserId) {
-    db.collection('users').doc(targetUserId).update({
-        friendRequests: firebase.firestore.FieldValue.arrayUnion(currentUser.id)
+    db.collection('users').doc(targetUserId).get().then(function(doc) {
+        if (!doc.exists) {
+            showToast('Пользователь не найден', 'error');
+            return;
+        }
+
+        var targetUser = doc.data();
+        
+        if (targetUser.friends && targetUser.friends.includes(currentUser.id)) {
+            showToast('Вы уже друзья', 'info');
+            closeModal();
+            return;
+        }
+
+        if (targetUser.friendRequests && targetUser.friendRequests.includes(currentUser.id)) {
+            showToast('Заявка уже отправлена', 'info');
+            closeModal();
+            return;
+        }
+
+        return db.collection('users').doc(targetUserId).update({
+            friendRequests: firebase.firestore.FieldValue.arrayUnion(currentUser.id)
+        });
     }).then(function() {
         closeModal();
         showToast('Заявка отправлена!', 'success');
     }).catch(function(error) {
-        console.error(error);
-        showToast('Ошибка отправки заявки', 'error');
+        console.error("Send friend request error:", error);
+        showToast('Ошибка: ' + error.message, 'error');
     });
 }
