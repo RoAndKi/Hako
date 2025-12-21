@@ -258,7 +258,6 @@ function initPasswordToggles() {
 
 function initNavigation() {
     var navItems = document.querySelectorAll('.nav-item');
-    var sections = document.querySelectorAll('.content-section');
 
     navItems.forEach(function(item) {
         item.addEventListener('click', function() {
@@ -267,14 +266,14 @@ function initNavigation() {
             });
             item.classList.add('active');
 
-            sections.forEach(function(s) {
-                s.classList.add('hidden');
+            document.querySelectorAll('.content-section').forEach(function(s) {
+                s.classList.remove('active');
             });
             
             var sectionId = item.dataset.section + 'Section';
             var section = document.getElementById(sectionId);
             if (section) {
-                section.classList.remove('hidden');
+                section.classList.add('active');
             }
 
             updateMobileNav(item.dataset.section);
