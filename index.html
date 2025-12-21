@@ -237,7 +237,7 @@
                         </div>
                         <h3>Нет активных чатов</h3>
                         <p>Добавьте друзей, чтобы начать общение</p>
-                        <button type="button" class="modal-btn primary" id="goToFriendsBtn">Найти друзей</button>
+                        <button type="button" class="btn-primary" id="goToFriendsBtn">Найти друзей</button>
                     </div>
                 </div>
             </section>
@@ -287,17 +287,17 @@
                         
                         <div class="profile-info-list">
                             <div class="profile-info-item">
-                                <span class="profile-info-label">ID</span>
-                                <span class="profile-info-value">
-                                    <code id="profileUserId">...</code>
-                                    <button type="button" class="header-btn" id="profileCopyIdBtn" style="padding: 6px;">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;">
-                                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
-                                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-                                        </svg>
-                                    </button>
-                                </span>
-                            </div>
+                            <span class="profile-info-label">ID</span>
+                            <span class="profile-info-value">
+                                <code id="profileUserId">...</code>
+                                <button type="button" class="copy-id-btn" id="profileCopyIdBtn">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                                    </svg>
+                                </button>
+                            </span>
+                        </div>
                             <div class="profile-info-item">
                                 <span class="profile-info-label">Email</span>
                                 <span class="profile-info-value" id="profileEmail">email@example.com</span>
