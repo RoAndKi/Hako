@@ -42,7 +42,8 @@ function showVerification(email) {
     document.getElementById('authContainer').classList.add('hidden');
     document.getElementById('verifyContainer').classList.remove('hidden');
     document.getElementById('appContainer').classList.add('hidden');
-    document.getElementById('verifyEmail').textContent = email;
+    var verifyEmailEl = document.getElementById('verifyEmail');
+    if (verifyEmailEl) verifyEmailEl.textContent = email;
 }
 
 function showApp() {
@@ -192,13 +193,12 @@ function initVerification() {
 
     if (resendBtn) {
         resendBtn.addEventListener('click', function() {
-            var btn = resendBtn;
-            btn.classList.add('loading');
-            btn.disabled = true;
+            resendBtn.classList.add('loading');
+            resendBtn.disabled = true;
 
             AuthService.resendVerificationEmail().then(function(result) {
-                btn.classList.remove('loading');
-                btn.disabled = false;
+                resendBtn.classList.remove('loading');
+                resendBtn.disabled = false;
 
                 if (result.success) {
                     showToast('Письмо отправлено повторно', 'success');
@@ -211,13 +211,12 @@ function initVerification() {
 
     if (checkBtn) {
         checkBtn.addEventListener('click', function() {
-            var btn = checkBtn;
-            btn.classList.add('loading');
-            btn.disabled = true;
+            checkBtn.classList.add('loading');
+            checkBtn.disabled = true;
 
             AuthService.checkEmailVerification().then(function(result) {
-                btn.classList.remove('loading');
-                btn.disabled = false;
+                checkBtn.classList.remove('loading');
+                checkBtn.disabled = false;
 
                 if (result.success && result.verified) {
                     currentUser = result.user;
@@ -280,6 +279,10 @@ function initNavigation() {
         });
     });
 
+    initGoToFriendsBtn();
+}
+
+function initGoToFriendsBtn() {
     var goToFriendsBtn = document.getElementById('goToFriendsBtn');
     if (goToFriendsBtn) {
         goToFriendsBtn.addEventListener('click', function() {
@@ -291,7 +294,6 @@ function initNavigation() {
 function initMobileNav() {
     var mobileNavItems = document.querySelectorAll('.mobile-nav-item[data-section]');
     var mobileProfileBtn = document.getElementById('mobileProfileBtn');
-    var sections = document.querySelectorAll('.content-section');
     var navItems = document.querySelectorAll('.nav-item');
 
     mobileNavItems.forEach(function(item) {
@@ -302,14 +304,14 @@ function initMobileNav() {
             if (mobileProfileBtn) mobileProfileBtn.classList.remove('active');
             item.classList.add('active');
 
-            sections.forEach(function(s) {
-                s.classList.add('hidden');
+            document.querySelectorAll('.content-section').forEach(function(s) {
+                s.classList.remove('active');
             });
             
             var sectionId = item.dataset.section + 'Section';
             var section = document.getElementById(sectionId);
             if (section) {
-                section.classList.remove('hidden');
+                section.classList.add('active');
             }
 
             navItems.forEach(function(n) {
@@ -328,12 +330,16 @@ function initMobileNav() {
             });
             mobileProfileBtn.classList.add('active');
             
-            sections.forEach(function(s) {
-                s.classList.add('hidden');
+            document.querySelectorAll('.content-section').forEach(function(s) {
+                s.classList.remove('active');
             });
             
-            document.getElementById('profileSection').classList.remove('hidden');
+            document.getElementById('profileSection').classList.add('active');
             updateProfileUI();
+            
+            document.querySelectorAll('.nav-item').forEach(function(n) {
+                n.classList.remove('active');
+            });
         });
     }
 }
@@ -357,12 +363,6 @@ function updateMobileNav(section) {
 function initUserMenu() {
     var menuBtn = document.getElementById('userMenuBtn');
     var menu = document.getElementById('userMenu');
-    var logoutBtn = document.getElementById('logoutBtn');
-    var copyIdBtn = document.getElementById('copyIdBtn');
-    var editDisplayNameBtn = document.getElementById('editDisplayNameBtn');
-    var editUsernameBtn = document.getElementById('editUsernameBtn');
-    var editPasswordBtn = document.getElementById('editPasswordBtn');
-    var showProfileBtn = document.getElementById('showProfileBtn');
 
     if (menuBtn && menu) {
         menuBtn.addEventListener('click', function(e) {
@@ -377,9 +377,10 @@ function initUserMenu() {
         });
     }
 
+    var logoutBtn = document.getElementById('logoutBtn');
     if (logoutBtn) {
         logoutBtn.addEventListener('click', function() {
-            menu.classList.add('hidden');
+            if (menu) menu.classList.add('hidden');
             AuthService.logout().then(function(result) {
                 if (result.success) {
                     currentUser = null;
@@ -390,60 +391,80 @@ function initUserMenu() {
         });
     }
 
+    var copyIdBtn = document.getElementById('copyIdBtn');
     if (copyIdBtn) {
         copyIdBtn.addEventListener('click', function() {
-            menu.classList.add('hidden');
+            if (menu) menu.classList.add('hidden');
             if (currentUser) {
                 copyToClipboard(currentUser.id);
             }
         });
     }
 
+    var showProfileBtn = document.getElementById('showProfileBtn');
+    if (showProfileBtn) {
+        showProfileBtn.addEventListener('click', function() {
+            if (menu) menu.classList.add('hidden');
+            showProfileSection();
+        });
+    }
+
+    var editDisplayNameBtn = document.getElementById('editDisplayNameBtn');
     if (editDisplayNameBtn) {
         editDisplayNameBtn.addEventListener('click', function() {
-            menu.classList.add('hidden');
+            if (menu) menu.classList.add('hidden');
             openDisplayNameModal();
         });
     }
 
+    var editUsernameBtn = document.getElementById('editUsernameBtn');
     if (editUsernameBtn) {
         editUsernameBtn.addEventListener('click', function() {
-            menu.classList.add('hidden');
+            if (menu) menu.classList.add('hidden');
             openUsernameModal();
         });
     }
 
+    var editPasswordBtn = document.getElementById('editPasswordBtn');
     if (editPasswordBtn) {
         editPasswordBtn.addEventListener('click', function() {
-            menu.classList.add('hidden');
+            if (menu) menu.classList.add('hidden');
             openPasswordModal();
-        });
-    }
-
-    if (showProfileBtn) {
-        showProfileBtn.addEventListener('click', function() {
-            menu.classList.add('hidden');
-            showProfileSection();
         });
     }
 }
 
+function showProfileSection() {
+    document.querySelectorAll('.content-section').forEach(function(s) {
+        s.classList.remove('active');
+    });
+    document.getElementById('profileSection').classList.add('active');
+    
+    document.querySelectorAll('.nav-item').forEach(function(n) {
+        n.classList.remove('active');
+    });
+    
+    updateMobileNav('profile');
+    var mobileProfileBtn = document.getElementById('mobileProfileBtn');
+    if (mobileProfileBtn) {
+        mobileProfileBtn.classList.add('active');
+    }
+    
+    updateProfileUI();
+}
+
 function initProfileSection() {
     var backBtn = document.getElementById('backFromProfileBtn');
-    var profileCopyIdBtn = document.getElementById('profileCopyIdBtn');
-    var profileEditDisplayNameBtn = document.getElementById('profileEditDisplayNameBtn');
-    var profileEditUsernameBtn = document.getElementById('profileEditUsernameBtn');
-    var profileEditPasswordBtn = document.getElementById('profileEditPasswordBtn');
-    var profileLogoutBtn = document.getElementById('profileLogoutBtn');
-
     if (backBtn) {
         backBtn.addEventListener('click', function() {
-            document.getElementById('profileSection').classList.add('hidden');
-            document.getElementById('chatsSection').classList.remove('hidden');
+            document.getElementById('profileSection').classList.remove('active');
+            document.getElementById('chatsSection').classList.add('active');
+            document.querySelector('[data-section="chats"]').classList.add('active');
             updateMobileNav('chats');
         });
     }
 
+    var profileCopyIdBtn = document.getElementById('profileCopyIdBtn');
     if (profileCopyIdBtn) {
         profileCopyIdBtn.addEventListener('click', function() {
             if (currentUser) {
@@ -452,24 +473,28 @@ function initProfileSection() {
         });
     }
 
+    var profileEditDisplayNameBtn = document.getElementById('profileEditDisplayNameBtn');
     if (profileEditDisplayNameBtn) {
         profileEditDisplayNameBtn.addEventListener('click', function() {
             openDisplayNameModal();
         });
     }
 
+    var profileEditUsernameBtn = document.getElementById('profileEditUsernameBtn');
     if (profileEditUsernameBtn) {
         profileEditUsernameBtn.addEventListener('click', function() {
             openUsernameModal();
         });
     }
 
+    var profileEditPasswordBtn = document.getElementById('profileEditPasswordBtn');
     if (profileEditPasswordBtn) {
         profileEditPasswordBtn.addEventListener('click', function() {
             openPasswordModal();
         });
     }
 
+    var profileLogoutBtn = document.getElementById('profileLogoutBtn');
     if (profileLogoutBtn) {
         profileLogoutBtn.addEventListener('click', function() {
             AuthService.logout().then(function(result) {
@@ -481,20 +506,6 @@ function initProfileSection() {
             });
         });
     }
-}
-
-function showProfileSection() {
-    var sections = document.querySelectorAll('.content-section');
-    sections.forEach(function(s) {
-        s.classList.add('hidden');
-    });
-    document.getElementById('profileSection').classList.remove('hidden');
-    updateProfileUI();
-    
-    var navItems = document.querySelectorAll('.nav-item');
-    navItems.forEach(function(n) {
-        n.classList.remove('active');
-    });
 }
 
 function updateProfileUI() {
@@ -533,8 +544,6 @@ function initFriendsSection() {
     }
 
     var friendsTabs = document.querySelectorAll('.friends-tab');
-    var friendsContents = document.querySelectorAll('.friends-content');
-
     friendsTabs.forEach(function(tab) {
         tab.addEventListener('click', function() {
             friendsTabs.forEach(function(t) {
@@ -543,12 +552,15 @@ function initFriendsSection() {
             tab.classList.add('active');
 
             var tabName = tab.dataset.tab;
-            friendsContents.forEach(function(content) {
+            
+            document.querySelectorAll('.friends-content').forEach(function(content) {
                 content.classList.add('hidden');
-                if (content.id === tabName + 'Content') {
-                    content.classList.remove('hidden');
-                }
             });
+            
+            var targetContent = document.getElementById(tabName + 'Content');
+            if (targetContent) {
+                targetContent.classList.remove('hidden');
+            }
 
             if (tabName === 'all') {
                 loadFriends();
@@ -579,16 +591,16 @@ function loadFriends() {
         if (friendIds.length === 0) {
             container.innerHTML = 
                 '<div class="empty-state">' +
-                '<div class="empty-icon">' +
-                '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">' +
-                '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>' +
-                '<circle cx="9" cy="7" r="4"/>' +
-                '<path d="M23 21v-2a4 4 0 0 0-3-3.87"/>' +
-                '<path d="M16 3.13a4 4 0 0 1 0 7.75"/>' +
-                '</svg>' +
-                '</div>' +
-                '<h3>Нет друзей</h3>' +
-                '<p>Добавьте друзей по юзернейму или ID</p>' +
+                    '<div class="empty-icon">' +
+                        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">' +
+                            '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>' +
+                            '<circle cx="9" cy="7" r="4"/>' +
+                            '<path d="M23 21v-2a4 4 0 0 0-3-3.87"/>' +
+                            '<path d="M16 3.13a4 4 0 0 1 0 7.75"/>' +
+                        '</svg>' +
+                    '</div>' +
+                    '<h3>Нет друзей</h3>' +
+                    '<p>Добавьте друзей по юзернейму или ID</p>' +
                 '</div>';
             return;
         }
@@ -609,7 +621,7 @@ function loadFriends() {
         });
     }).catch(function(error) {
         console.error("Load friends error:", error);
-        container.innerHTML = '<p class="error-text">Ошибка загрузки</p>';
+        container.innerHTML = '<p class="search-error">Ошибка загрузки</p>';
     });
 }
 
@@ -628,16 +640,16 @@ function loadFriendRequests() {
         if (requestIds.length === 0) {
             container.innerHTML = 
                 '<div class="empty-state">' +
-                '<div class="empty-icon">' +
-                '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">' +
-                '<path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>' +
-                '<circle cx="8.5" cy="7" r="4"/>' +
-                '<line x1="20" y1="8" x2="20" y2="14"/>' +
-                '<line x1="23" y1="11" x2="17" y2="11"/>' +
-                '</svg>' +
-                '</div>' +
-                '<h3>Нет заявок</h3>' +
-                '<p>Входящие заявки в друзья появятся здесь</p>' +
+                    '<div class="empty-icon">' +
+                        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">' +
+                            '<path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>' +
+                            '<circle cx="8.5" cy="7" r="4"/>' +
+                            '<line x1="20" y1="8" x2="20" y2="14"/>' +
+                            '<line x1="23" y1="11" x2="17" y2="11"/>' +
+                        '</svg>' +
+                    '</div>' +
+                    '<h3>Нет заявок</h3>' +
+                    '<p>Входящие заявки появятся здесь</p>' +
                 '</div>';
             return;
         }
@@ -656,57 +668,60 @@ function loadFriendRequests() {
             });
             initRequestItemButtons();
         });
+    }).catch(function(error) {
+        console.error("Load requests error:", error);
+        container.innerHTML = '<p class="search-error">Ошибка загрузки</p>';
     });
 }
 
 function createFriendItem(friend) {
     return '<div class="friend-item" data-id="' + friend.id + '">' +
         '<div class="friend-avatar">' +
-        '<span>' + friend.displayName.charAt(0).toUpperCase() + '</span>' +
+            '<span>' + friend.displayName.charAt(0).toUpperCase() + '</span>' +
         '</div>' +
         '<div class="friend-info">' +
-        '<span class="friend-name">' + friend.displayName + '</span>' +
-        '<span class="friend-username">@' + friend.username + '</span>' +
+            '<span class="friend-name">' + friend.displayName + '</span>' +
+            '<span class="friend-username">@' + friend.username + '</span>' +
         '</div>' +
         '<div class="friend-actions">' +
-        '<button type="button" class="friend-action-btn chat-btn" data-id="' + friend.id + '" title="Написать">' +
-        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' +
-        '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>' +
-        '</svg>' +
-        '</button>' +
-        '<button type="button" class="friend-action-btn remove-btn" data-id="' + friend.id + '" title="Удалить">' +
-        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' +
-        '<line x1="18" y1="6" x2="6" y2="18"/>' +
-        '<line x1="6" y1="6" x2="18" y2="18"/>' +
-        '</svg>' +
-        '</button>' +
+            '<button type="button" class="friend-action-btn chat-btn" data-id="' + friend.id + '" title="Написать">' +
+                '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' +
+                    '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>' +
+                '</svg>' +
+            '</button>' +
+            '<button type="button" class="friend-action-btn remove-btn" data-id="' + friend.id + '" title="Удалить">' +
+                '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' +
+                    '<line x1="18" y1="6" x2="6" y2="18"/>' +
+                    '<line x1="6" y1="6" x2="18" y2="18"/>' +
+                '</svg>' +
+            '</button>' +
         '</div>' +
-        '</div>';
+    '</div>';
 }
 
 function createRequestItem(requester) {
     return '<div class="request-item" data-id="' + requester.id + '">' +
         '<div class="friend-avatar">' +
-        '<span>' + requester.displayName.charAt(0).toUpperCase() + '</span>' +
+            '<span>' + requester.displayName.charAt(0).toUpperCase() + '</span>' +
         '</div>' +
         '<div class="friend-info">' +
-        '<span class="friend-name">' + requester.displayName + '</span>' +
-        '<span class="friend-username">@' + requester.username + '</span>' +
+            '<span class="friend-name">' + requester.displayName + '</span>' +
+            '<span class="friend-username">@' + requester.username + '</span>' +
         '</div>' +
         '<div class="friend-actions">' +
-        '<button type="button" class="friend-action-btn accept-btn" data-id="' + requester.id + '" title="Принять">' +
-        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' +
-        '<polyline points="20 6 9 17 4 12"/>' +
-        '</svg>' +
-        '</button>' +
-        '<button type="button" class="friend-action-btn decline-btn" data-id="' + requester.id + '" title="Отклонить">' +
-        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' +
-        '<line x1="18" y1="6" x2="6" y2="18"/>' +
-        '<line x1="6" y1="6" x2="18" y2="18"/>' +
-        '</svg>' +
-        '</button>' +
+            '<button type="button" class="friend-action-btn accept-btn" data-id="' + requester.id + '" title="Принять">' +
+                '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' +
+                    '<polyline points="20 6 9 17 4 12"/>' +
+                '</svg>' +
+            '</button>' +
+            '<button type="button" class="friend-action-btn decline-btn" data-id="' + requester.id + '" title="Отклонить">' +
+                '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' +
+                    '<line x1="18" y1="6" x2="6" y2="18"/>' +
+                    '<line x1="6" y1="6" x2="18" y2="18"/>' +
+                '</svg>' +
+            '</button>' +
         '</div>' +
-        '</div>';
+    '</div>';
 }
 
 function initFriendItemButtons() {
@@ -773,8 +788,8 @@ function openChat(friendId) {
                     '</div>' +
                 '</div>' +
                 '<div class="chat-messages" id="chatMessages">' +
-                    '<div class="empty-state">' +
-                        '<p>Начните общение с ' + friend.displayName + '</p>' +
+                    '<div class="empty-state" style="padding: 40px 20px;">' +
+                        '<p style="margin: 0;">Начните общение с ' + friend.displayName + '</p>' +
                     '</div>' +
                 '</div>' +
                 '<div class="chat-input-container">' +
@@ -812,7 +827,6 @@ function openChat(friendId) {
     });
 }
 
-
 function showChatsListView() {
     var chatSection = document.getElementById('chatsSection');
     chatSection.innerHTML = 
@@ -832,12 +846,7 @@ function showChatsListView() {
             '</div>' +
         '</div>';
 
-    var goToFriendsBtn = document.getElementById('goToFriendsBtn');
-    if (goToFriendsBtn) {
-        goToFriendsBtn.addEventListener('click', function() {
-            document.querySelector('[data-section="friends"]').click();
-        });
-    }
+    initGoToFriendsBtn();
 }
 
 function sendMessage(friendId) {
@@ -902,25 +911,20 @@ function removeFriend(friendId) {
     );
 }
 
-
 function acceptFriendRequest(requesterId) {
     var batch = db.batch();
-    var currentUserRef = db.collection('users').doc(currentUser.id);
-    var requesterRef = db.collection('users').doc(requesterId);
     
-    batch.update(currentUserRef, {
+    batch.update(db.collection('users').doc(currentUser.id), {
         friends: firebase.firestore.FieldValue.arrayUnion(requesterId),
         friendRequests: firebase.firestore.FieldValue.arrayRemove(requesterId)
     });
     
-    batch.update(requesterRef, {
+    batch.update(db.collection('users').doc(requesterId), {
         friends: firebase.firestore.FieldValue.arrayUnion(currentUser.id)
     });
 
     batch.commit().then(function() {
-        if (!currentUser.friends) {
-            currentUser.friends = [];
-        }
+        if (!currentUser.friends) currentUser.friends = [];
         currentUser.friends.push(requesterId);
         
         if (currentUser.friendRequests) {
@@ -931,10 +935,9 @@ function acceptFriendRequest(requesterId) {
         
         showToast('Заявка принята!', 'success');
         loadFriendRequests();
-        loadFriends();
     }).catch(function(error) {
-        console.error("Accept friend request error:", error);
-        showToast('Ошибка: ' + error.message, 'error');
+        console.error(error);
+        showToast('Ошибка', 'error');
     });
 }
 
@@ -947,12 +950,11 @@ function declineFriendRequest(requesterId) {
                 return id !== requesterId;
             });
         }
-        
         showToast('Заявка отклонена', 'info');
         loadFriendRequests();
     }).catch(function(error) {
-        console.error("Decline friend request error:", error);
-        showToast('Ошибка: ' + error.message, 'error');
+        console.error(error);
+        showToast('Ошибка', 'error');
     });
 }
 
@@ -1075,19 +1077,34 @@ function closeModal() {
     document.body.style.overflow = '';
 }
 
+function openConfirmModal(title, message, onConfirm) {
+    var content = 
+        '<div class="confirm-modal-content">' +
+            '<p>' + message + '</p>' +
+            '<div class="modal-actions">' +
+                '<button type="button" class="modal-btn secondary" id="cancelConfirmBtn">Отмена</button>' +
+                '<button type="button" class="modal-btn danger" id="confirmBtn">Удалить</button>' +
+            '</div>' +
+        '</div>';
+    
+    openModal(title, content);
+
+    document.getElementById('cancelConfirmBtn').addEventListener('click', closeModal);
+    document.getElementById('confirmBtn').addEventListener('click', onConfirm);
+}
+
 function openDisplayNameModal() {
     var currentName = currentUser ? currentUser.displayName : '';
     var content = 
         '<form id="displayNameModalForm">' +
-        '<div class="input-group">' +
-        '<input type="text" id="newDisplayNameInput" required minlength="2" maxlength="32" value="' + currentName + '">' +
-        '<label>Новое имя</label>' +
-        '<div class="input-highlight"></div>' +
-        '</div>' +
-        '<div class="modal-actions">' +
-        '<button type="button" class="modal-btn secondary" id="cancelDisplayNameBtn">Отмена</button>' +
-        '<button type="submit" class="modal-btn primary">Сохранить</button>' +
-        '</div>' +
+            '<div class="input-group">' +
+                '<input type="text" id="newDisplayNameInput" required minlength="2" maxlength="32" value="' + currentName + '" placeholder=" ">' +
+                '<label>Новое имя</label>' +
+            '</div>' +
+            '<div class="modal-actions">' +
+                '<button type="button" class="modal-btn secondary" id="cancelDisplayNameBtn">Отмена</button>' +
+                '<button type="submit" class="modal-btn primary">Сохранить</button>' +
+            '</div>' +
         '</form>';
     
     openModal('Изменить имя', content);
@@ -1119,20 +1136,18 @@ function openDisplayNameModal() {
 function openUsernameModal() {
     var content = 
         '<form id="usernameModalForm">' +
-        '<div class="input-group">' +
-        '<input type="text" id="newUsernameInput" required minlength="3" maxlength="20">' +
-        '<label>Новый юзернейм</label>' +
-        '<div class="input-highlight"></div>' +
-        '</div>' +
-        '<div class="input-group">' +
-        '<input type="password" id="usernamePasswordInput" required>' +
-        '<label>Ваш пароль</label>' +
-        '<div class="input-highlight"></div>' +
-        '</div>' +
-        '<div class="modal-actions">' +
-        '<button type="button" class="modal-btn secondary" id="cancelUsernameBtn">Отмена</button>' +
-        '<button type="submit" class="modal-btn primary">Сохранить</button>' +
-        '</div>' +
+            '<div class="input-group">' +
+                '<input type="text" id="newUsernameInput" required minlength="3" maxlength="20" placeholder=" ">' +
+                '<label>Новый юзернейм</label>' +
+            '</div>' +
+            '<div class="input-group">' +
+                '<input type="password" id="usernamePasswordInput" required placeholder=" ">' +
+                '<label>Ваш пароль</label>' +
+            '</div>' +
+            '<div class="modal-actions">' +
+                '<button type="button" class="modal-btn secondary" id="cancelUsernameBtn">Отмена</button>' +
+                '<button type="submit" class="modal-btn primary">Сохранить</button>' +
+            '</div>' +
         '</form>';
     
     openModal('Изменить юзернейм', content);
@@ -1170,25 +1185,22 @@ function openUsernameModal() {
 function openPasswordModal() {
     var content = 
         '<form id="passwordModalForm">' +
-        '<div class="input-group">' +
-        '<input type="password" id="currentPasswordInput" required>' +
-        '<label>Текущий пароль</label>' +
-        '<div class="input-highlight"></div>' +
-        '</div>' +
-        '<div class="input-group">' +
-        '<input type="password" id="newPasswordInput" required minlength="6">' +
-        '<label>Новый пароль</label>' +
-        '<div class="input-highlight"></div>' +
-        '</div>' +
-        '<div class="input-group">' +
-        '<input type="password" id="confirmPasswordInput" required minlength="6">' +
-        '<label>Подтвердите пароль</label>' +
-        '<div class="input-highlight"></div>' +
-        '</div>' +
-        '<div class="modal-actions">' +
-        '<button type="button" class="modal-btn secondary" id="cancelPasswordBtn">Отмена</button>' +
-        '<button type="submit" class="modal-btn primary">Сохранить</button>' +
-        '</div>' +
+            '<div class="input-group">' +
+                '<input type="password" id="currentPasswordInput" required placeholder=" ">' +
+                '<label>Текущий пароль</label>' +
+            '</div>' +
+            '<div class="input-group">' +
+                '<input type="password" id="newPasswordInput" required minlength="6" placeholder=" ">' +
+                '<label>Новый пароль</label>' +
+            '</div>' +
+            '<div class="input-group">' +
+                '<input type="password" id="confirmPasswordInput" required minlength="6" placeholder=" ">' +
+                '<label>Подтвердите пароль</label>' +
+            '</div>' +
+            '<div class="modal-actions">' +
+                '<button type="button" class="modal-btn secondary" id="cancelPasswordBtn">Отмена</button>' +
+                '<button type="submit" class="modal-btn primary">Сохранить</button>' +
+            '</div>' +
         '</form>';
     
     openModal('Изменить пароль', content);
@@ -1225,17 +1237,16 @@ function openPasswordModal() {
 function openAddFriendModal() {
     var content = 
         '<form id="addFriendForm">' +
-        '<p class="modal-desc">Введите юзернейм или ID пользователя</p>' +
-        '<div class="input-group">' +
-        '<input type="text" id="friendSearchInput" required placeholder=" ">' +
-        '<label>Юзернейм или ID</label>' +
-        '<div class="input-highlight"></div>' +
-        '</div>' +
-        '<div id="searchResult"></div>' +
-        '<div class="modal-actions">' +
-        '<button type="button" class="modal-btn secondary" id="cancelAddFriendBtn">Отмена</button>' +
-        '<button type="submit" class="modal-btn primary">Найти</button>' +
-        '</div>' +
+            '<p class="modal-desc">Введите юзернейм или ID пользователя</p>' +
+            '<div class="input-group">' +
+                '<input type="text" id="friendSearchInput" required placeholder=" ">' +
+                '<label>Юзернейм или ID</label>' +
+            '</div>' +
+            '<div id="searchResult"></div>' +
+            '<div class="modal-actions">' +
+                '<button type="button" class="modal-btn secondary" id="cancelAddFriendBtn">Отмена</button>' +
+                '<button type="submit" class="modal-btn primary">Найти</button>' +
+            '</div>' +
         '</form>';
     
     openModal('Добавить друга', content);
@@ -1275,13 +1286,13 @@ function openAddFriendModal() {
                 
                 resultDiv.innerHTML = 
                     '<div class="search-result-item">' +
-                    '<div class="friend-avatar"><span>' + user.displayName.charAt(0).toUpperCase() + '</span></div>' +
-                    '<div class="friend-info">' +
-                    '<span class="friend-name">' + user.displayName + '</span>' +
-                    '<span class="friend-username">@' + user.username + '</span>' +
-                    '</div>' +
-                    (isFriend ? '<span class="already-friend">Уже в друзьях</span>' : 
-                    '<button type="button" class="modal-btn primary small" id="sendRequestBtn">Добавить</button>') +
+                        '<div class="friend-avatar"><span>' + user.displayName.charAt(0).toUpperCase() + '</span></div>' +
+                        '<div class="friend-info">' +
+                            '<span class="friend-name">' + user.displayName + '</span>' +
+                            '<span class="friend-username">@' + user.username + '</span>' +
+                        '</div>' +
+                        (isFriend ? '<span class="already-friend">Уже в друзьях</span>' : 
+                        '<button type="button" class="modal-btn primary small" id="sendRequestBtn">Добавить</button>') +
                     '</div>';
 
                 if (!isFriend) {
@@ -1297,22 +1308,6 @@ function openAddFriendModal() {
             resultDiv.innerHTML = '<p class="search-error">Ошибка поиска</p>';
         });
     });
-}
-
-function openConfirmModal(title, message, onConfirm) {
-    var content = 
-        '<div class="confirm-modal-content">' +
-            '<p>' + message + '</p>' +
-            '<div class="modal-actions">' +
-                '<button type="button" class="modal-btn secondary" id="cancelConfirmBtn">Отмена</button>' +
-                '<button type="button" class="modal-btn danger" id="confirmBtn">Удалить</button>' +
-            '</div>' +
-        '</div>';
-    
-    openModal(title, content);
-
-    document.getElementById('cancelConfirmBtn').addEventListener('click', closeModal);
-    document.getElementById('confirmBtn').addEventListener('click', onConfirm);
 }
 
 function sendFriendRequest(targetUserId) {
