@@ -1178,10 +1178,15 @@ function openAddFriendModal() {
 }
 
 function sendFriendRequest(targetUserId) {
+    var resultDiv = document.getElementById('searchResult');
+    if (resultDiv) {
+        resultDiv.innerHTML = '<div class="loading-spinner small"></div>';
+    }
+
     db.collection('users').doc(targetUserId).get().then(function(doc) {
         if (!doc.exists) {
             showToast('Пользователь не найден', 'error');
-            return;
+            return Promise.reject('not_found');
         }
 
         var targetUser = doc.data();
@@ -1189,13 +1194,13 @@ function sendFriendRequest(targetUserId) {
         if (targetUser.friends && targetUser.friends.includes(currentUser.id)) {
             showToast('Вы уже друзья', 'info');
             closeModal();
-            return;
+            return Promise.reject('already_friends');
         }
 
         if (targetUser.friendRequests && targetUser.friendRequests.includes(currentUser.id)) {
-            showToast('Заявка уже отправлена', 'info');
+            showToast('Заявка уже отправлена ранее', 'info');
             closeModal();
-            return;
+            return Promise.reject('already_sent');
         }
 
         return db.collection('users').doc(targetUserId).update({
@@ -1205,7 +1210,10 @@ function sendFriendRequest(targetUserId) {
         closeModal();
         showToast('Заявка отправлена!', 'success');
     }).catch(function(error) {
+        if (error === 'not_found' || error === 'already_friends' || error === 'already_sent') {
+            return;
+        }
         console.error("Send friend request error:", error);
-        showToast('Ошибка: ' + error.message, 'error');
+        showToast('Ошибка отправки заявки', 'error');
     });
 }
