@@ -1,14 +1,14 @@
-let currentUser = null;
+var currentUser = null;
 
 document.addEventListener('DOMContentLoaded', function() {
+    console.log("DOM загружен, инициализация...");
     initApp();
 });
 
-async function initApp() {
-    showLoadingState();
-    
-    try {
-        currentUser = await AuthService.getCurrentUser();
+function initApp() {
+    AuthService.getCurrentUser().then(function(user) {
+        currentUser = user;
+        console.log("Текущий пользователь:", currentUser);
         
         if (currentUser) {
             showApp();
@@ -16,25 +16,15 @@ async function initApp() {
         } else {
             showAuth();
         }
-    } catch (error) {
-        console.error("Init error:", error);
-        showAuth();
-    }
-
-    initAuthTabs();
-    initAuthForms();
-    initNavigation();
-    initUserMenu();
-    
-    hideLoadingState();
-}
-
-function showLoadingState() {
-    document.body.style.opacity = '0.7';
-}
-
-function hideLoadingState() {
-    document.body.style.opacity = '1';
+        
+        initAuthTabs();
+        initAuthForms();
+        initPasswordToggles();
+        initNavigation();
+        initUserMenu();
+        initSettingsButtons();
+        initModal();
+    });
 }
 
 function showAuth() {
@@ -48,10 +38,10 @@ function showApp() {
 }
 
 function initAuthTabs() {
-    const tabs = document.querySelectorAll('.tab-btn');
-    const loginForm = document.getElementById('loginForm');
-    const registerForm = document.getElementById('registerForm');
-    const indicator = document.querySelector('.tab-indicator');
+    var tabs = document.querySelectorAll('.tab-btn');
+    var loginForm = document.getElementById('loginForm');
+    var registerForm = document.getElementById('registerForm');
+    var indicator = document.querySelector('.tab-indicator');
 
     tabs.forEach(function(tab) {
         tab.addEventListener('click', function() {
@@ -63,11 +53,11 @@ function initAuthTabs() {
             if (tab.dataset.tab === 'login') {
                 loginForm.classList.remove('hidden');
                 registerForm.classList.add('hidden');
-                indicator.style.transform = 'translateX(0)';
+                if (indicator) indicator.style.transform = 'translateX(0)';
             } else {
                 loginForm.classList.add('hidden');
                 registerForm.classList.remove('hidden');
-                indicator.style.transform = 'translateX(100%)';
+                if (indicator) indicator.style.transform = 'translateX(100%)';
             }
 
             hideMessages();
@@ -76,49 +66,51 @@ function initAuthTabs() {
 }
 
 function initAuthForms() {
-    const loginForm = document.getElementById('loginForm');
-    const registerForm = document.getElementById('registerForm');
+    var loginForm = document.getElementById('loginForm');
+    var registerForm = document.getElementById('registerForm');
 
-    loginForm.addEventListener('submit', async function(e) {
+    loginForm.addEventListener('submit', function(e) {
         e.preventDefault();
+        console.log("Login form submitted");
         
-        const btn = loginForm.querySelector('.submit-btn');
+        var btn = loginForm.querySelector('.submit-btn');
         btn.classList.add('loading');
         btn.disabled = true;
         hideMessages();
 
-        const email = document.getElementById('loginEmail').value.trim();
-        const password = document.getElementById('loginPassword').value;
+        var email = document.getElementById('loginEmail').value.trim();
+        var password = document.getElementById('loginPassword').value;
 
-        const result = await AuthService.login(email, password);
+        AuthService.login(email, password).then(function(result) {
+            btn.classList.remove('loading');
+            btn.disabled = false;
 
-        btn.classList.remove('loading');
-        btn.disabled = false;
-
-        if (result.success) {
-            currentUser = result.user;
-            showApp();
-            updateUserUI();
-            showToast('Добро пожаловать!', 'success');
-            loginForm.reset();
-        } else {
-            showError(result.error);
-        }
+            if (result.success) {
+                currentUser = result.user;
+                showApp();
+                updateUserUI();
+                showToast('Добро пожаловать!', 'success');
+                loginForm.reset();
+            } else {
+                showError(result.error);
+            }
+        });
     });
 
-    registerForm.addEventListener('submit', async function(e) {
+    registerForm.addEventListener('submit', function(e) {
         e.preventDefault();
+        console.log("Register form submitted");
         
-        const btn = registerForm.querySelector('.submit-btn');
+        var btn = registerForm.querySelector('.submit-btn');
         btn.classList.add('loading');
         btn.disabled = true;
         hideMessages();
 
-        const displayName = document.getElementById('registerDisplayName').value.trim();
-        const username = document.getElementById('registerUsername').value.trim();
-        const email = document.getElementById('registerEmail').value.trim();
-        const password = document.getElementById('registerPassword').value;
-        const passwordConfirm = document.getElementById('registerPasswordConfirm').value;
+        var displayName = document.getElementById('registerDisplayName').value.trim();
+        var username = document.getElementById('registerUsername').value.trim();
+        var email = document.getElementById('registerEmail').value.trim();
+        var password = document.getElementById('registerPassword').value;
+        var passwordConfirm = document.getElementById('registerPasswordConfirm').value;
 
         if (!displayName || !username || !email || !password || !passwordConfirm) {
             btn.classList.remove('loading');
@@ -155,26 +147,40 @@ function initAuthForms() {
             return;
         }
 
-        const result = await AuthService.register(email, password, username, displayName);
+        AuthService.register(email, password, username, displayName).then(function(result) {
+            btn.classList.remove('loading');
+            btn.disabled = false;
 
-        btn.classList.remove('loading');
-        btn.disabled = false;
+            if (result.success) {
+                currentUser = result.user;
+                showApp();
+                updateUserUI();
+                showToast('Аккаунт успешно создан!', 'success');
+                registerForm.reset();
+            } else {
+                showError(result.error);
+            }
+        });
+    });
+}
 
-        if (result.success) {
-            currentUser = result.user;
-            showApp();
-            updateUserUI();
-            showToast('Аккаунт успешно создан!', 'success');
-            registerForm.reset();
-        } else {
-            showError(result.error);
-        }
+function initPasswordToggles() {
+    var toggles = document.querySelectorAll('.password-toggle');
+    toggles.forEach(function(toggle) {
+        toggle.addEventListener('click', function(e) {
+            e.preventDefault();
+            var targetId = toggle.getAttribute('data-target');
+            var input = document.getElementById(targetId);
+            if (input) {
+                input.type = input.type === 'password' ? 'text' : 'password';
+            }
+        });
     });
 }
 
 function initNavigation() {
-    const navItems = document.querySelectorAll('.nav-item');
-    const sections = document.querySelectorAll('.content-section');
+    var navItems = document.querySelectorAll('.nav-item');
+    var sections = document.querySelectorAll('.content-section');
 
     navItems.forEach(function(item) {
         item.addEventListener('click', function() {
@@ -187,15 +193,21 @@ function initNavigation() {
                 s.classList.add('hidden');
             });
             
-            const sectionId = item.dataset.section + 'Section';
-            document.getElementById(sectionId).classList.remove('hidden');
+            var sectionId = item.dataset.section + 'Section';
+            var section = document.getElementById(sectionId);
+            if (section) {
+                section.classList.remove('hidden');
+            }
         });
     });
 }
 
 function initUserMenu() {
-    const menuBtn = document.getElementById('userMenuBtn');
-    const menu = document.getElementById('userMenu');
+    var menuBtn = document.getElementById('userMenuBtn');
+    var menu = document.getElementById('userMenu');
+    var logoutBtn = document.getElementById('logoutBtn');
+    var copyIdBtn = document.getElementById('copyIdBtn');
+    var editProfileBtn = document.getElementById('editProfileBtn');
 
     if (menuBtn && menu) {
         menuBtn.addEventListener('click', function(e) {
@@ -208,25 +220,84 @@ function initUserMenu() {
                 menu.classList.add('hidden');
             }
         });
+    }
 
-        document.getElementById('logoutBtn').addEventListener('click', async function() {
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', function() {
             menu.classList.add('hidden');
-            const result = await AuthService.logout();
-            if (result.success) {
-                currentUser = null;
-                showAuth();
-                showToast('Вы вышли из аккаунта', 'info');
+            AuthService.logout().then(function(result) {
+                if (result.success) {
+                    currentUser = null;
+                    showAuth();
+                    showToast('Вы вышли из аккаунта', 'info');
+                }
+            });
+        });
+    }
+
+    if (copyIdBtn) {
+        copyIdBtn.addEventListener('click', function() {
+            menu.classList.add('hidden');
+            copyToClipboard(currentUser.id);
+        });
+    }
+
+    if (editProfileBtn) {
+        editProfileBtn.addEventListener('click', function() {
+            menu.classList.add('hidden');
+            document.querySelector('[data-section="settings"]').click();
+        });
+    }
+}
+
+function initSettingsButtons() {
+    var copyUserIdBtn = document.getElementById('copyUserIdBtn');
+    var editUsernameBtn = document.getElementById('editUsernameBtn');
+    var editDisplayNameBtn = document.getElementById('editDisplayNameBtn');
+    var editPasswordBtn = document.getElementById('editPasswordBtn');
+
+    if (copyUserIdBtn) {
+        copyUserIdBtn.addEventListener('click', function() {
+            if (currentUser) {
+                copyToClipboard(currentUser.id);
             }
         });
+    }
 
-        document.getElementById('copyIdBtn').addEventListener('click', function() {
-            copyUserId();
-            menu.classList.add('hidden');
+    if (editUsernameBtn) {
+        editUsernameBtn.addEventListener('click', function() {
+            openUsernameModal();
         });
+    }
 
-        document.getElementById('editProfileBtn').addEventListener('click', function() {
-            document.querySelector('[data-section="settings"]').click();
-            menu.classList.add('hidden');
+    if (editDisplayNameBtn) {
+        editDisplayNameBtn.addEventListener('click', function() {
+            openDisplayNameModal();
+        });
+    }
+
+    if (editPasswordBtn) {
+        editPasswordBtn.addEventListener('click', function() {
+            openPasswordModal();
+        });
+    }
+}
+
+function initModal() {
+    var modalOverlay = document.getElementById('modalOverlay');
+    var modalCloseBtn = document.getElementById('modalCloseBtn');
+
+    if (modalOverlay) {
+        modalOverlay.addEventListener('click', function(e) {
+            if (e.target === modalOverlay) {
+                closeModal();
+            }
+        });
+    }
+
+    if (modalCloseBtn) {
+        modalCloseBtn.addEventListener('click', function() {
+            closeModal();
         });
     }
 }
@@ -234,18 +305,18 @@ function initUserMenu() {
 function updateUserUI() {
     if (!currentUser) return;
 
-    const displayNameEl = document.getElementById('userDisplayName');
-    const usernameEl = document.getElementById('userUsername');
-    const avatarEl = document.getElementById('userAvatarLetter');
+    var displayNameEl = document.getElementById('userDisplayName');
+    var usernameEl = document.getElementById('userUsername');
+    var avatarEl = document.getElementById('userAvatarLetter');
     
     if (displayNameEl) displayNameEl.textContent = currentUser.displayName;
     if (usernameEl) usernameEl.textContent = '@' + currentUser.username;
     if (avatarEl) avatarEl.textContent = currentUser.displayName.charAt(0).toUpperCase();
 
-    const settingsUserId = document.getElementById('settingsUserId');
-    const settingsUsername = document.getElementById('settingsUsername');
-    const settingsDisplayName = document.getElementById('settingsDisplayName');
-    const settingsEmail = document.getElementById('settingsEmail');
+    var settingsUserId = document.getElementById('settingsUserId');
+    var settingsUsername = document.getElementById('settingsUsername');
+    var settingsDisplayName = document.getElementById('settingsDisplayName');
+    var settingsEmail = document.getElementById('settingsEmail');
 
     if (settingsUserId) settingsUserId.textContent = currentUser.id;
     if (settingsUsername) settingsUsername.textContent = '@' + currentUser.username;
@@ -254,51 +325,34 @@ function updateUserUI() {
 }
 
 function showError(message) {
-    const errorEl = document.getElementById('authError');
+    var errorEl = document.getElementById('authError');
     if (errorEl) {
         errorEl.textContent = message;
         errorEl.classList.remove('hidden');
     }
 }
 
-function showSuccess(message) {
-    const successEl = document.getElementById('authSuccess');
-    if (successEl) {
-        successEl.textContent = message;
-        successEl.classList.remove('hidden');
-    }
-}
-
 function hideMessages() {
-    const errorEl = document.getElementById('authError');
-    const successEl = document.getElementById('authSuccess');
+    var errorEl = document.getElementById('authError');
+    var successEl = document.getElementById('authSuccess');
     if (errorEl) errorEl.classList.add('hidden');
     if (successEl) successEl.classList.add('hidden');
 }
 
-function togglePassword(inputId) {
-    const input = document.getElementById(inputId);
-    if (input) {
-        input.type = input.type === 'password' ? 'text' : 'password';
-    }
-}
-
-function copyUserId() {
-    if (!currentUser) return;
-    
+function copyToClipboard(text) {
     if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(currentUser.id).then(function() {
-            showToast('ID скопирован в буфер обмена', 'success');
+        navigator.clipboard.writeText(text).then(function() {
+            showToast('Скопировано в буфер обмена', 'success');
         }).catch(function() {
-            fallbackCopyText(currentUser.id);
+            fallbackCopy(text);
         });
     } else {
-        fallbackCopyText(currentUser.id);
+        fallbackCopy(text);
     }
 }
 
-function fallbackCopyText(text) {
-    const textarea = document.createElement('textarea');
+function fallbackCopy(text) {
+    var textarea = document.createElement('textarea');
     textarea.value = text;
     textarea.style.position = 'fixed';
     textarea.style.opacity = '0';
@@ -306,7 +360,7 @@ function fallbackCopyText(text) {
     textarea.select();
     try {
         document.execCommand('copy');
-        showToast('ID скопирован в буфер обмена', 'success');
+        showToast('Скопировано в буфер обмена', 'success');
     } catch (err) {
         showToast('Не удалось скопировать', 'error');
     }
@@ -315,10 +369,10 @@ function fallbackCopyText(text) {
 
 function showToast(message, type) {
     type = type || 'info';
-    const container = document.getElementById('toastContainer');
+    var container = document.getElementById('toastContainer');
     if (!container) return;
 
-    const toast = document.createElement('div');
+    var toast = document.createElement('div');
     toast.className = 'toast ' + type;
     
     var iconSvg = '';
@@ -337,7 +391,7 @@ function showToast(message, type) {
         toast.style.animation = 'slideInRight 0.3s ease reverse';
         setTimeout(function() {
             if (toast.parentNode) {
-                toast.remove();
+                toast.parentNode.removeChild(toast);
             }
         }, 300);
     }, 3000);
@@ -353,140 +407,144 @@ function closeModal() {
     document.getElementById('modalOverlay').classList.add('hidden');
 }
 
-document.addEventListener('DOMContentLoaded', function() {
-    const modalOverlay = document.getElementById('modalOverlay');
-    if (modalOverlay) {
-        modalOverlay.addEventListener('click', function(e) {
-            if (e.target.id === 'modalOverlay') {
-                closeModal();
-            }
-        });
-    }
-});
-
 function openUsernameModal() {
-    var content = '<form id="usernameForm" onsubmit="handleUsernameSubmit(event)">' +
+    var content = 
+        '<form id="usernameModalForm">' +
         '<div class="input-group">' +
-        '<input type="text" id="newUsername" required placeholder=" " pattern="[a-zA-Z0-9_]+" minlength="3" maxlength="20">' +
+        '<input type="text" id="newUsernameInput" required minlength="3" maxlength="20">' +
         '<label>Новый юзернейм</label>' +
         '<div class="input-highlight"></div>' +
         '</div>' +
         '<div class="input-group">' +
-        '<input type="password" id="usernamePassword" required placeholder=" ">' +
-        '<label>Подтвердите пароль</label>' +
+        '<input type="password" id="usernamePasswordInput" required>' +
+        '<label>Ваш пароль</label>' +
         '<div class="input-highlight"></div>' +
         '</div>' +
         '<div class="modal-actions">' +
-        '<button type="button" class="modal-btn secondary" onclick="closeModal()">Отмена</button>' +
+        '<button type="button" class="modal-btn secondary" id="cancelUsernameBtn">Отмена</button>' +
         '<button type="submit" class="modal-btn primary">Сохранить</button>' +
         '</div>' +
         '</form>';
+    
     openModal('Изменить юзернейм', content);
-}
 
-async function handleUsernameSubmit(e) {
-    e.preventDefault();
-    const newUsername = document.getElementById('newUsername').value.trim();
-    const password = document.getElementById('usernamePassword').value;
+    document.getElementById('cancelUsernameBtn').addEventListener('click', closeModal);
+    
+    document.getElementById('usernameModalForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        var newUsername = document.getElementById('newUsernameInput').value.trim();
+        var password = document.getElementById('usernamePasswordInput').value;
 
-    if (!newUsername || !password) {
-        showToast('Заполните все поля', 'error');
-        return;
-    }
+        if (!newUsername || !password) {
+            showToast('Заполните все поля', 'error');
+            return;
+        }
 
-    const result = await AuthService.updateUsername(newUsername, password);
-    if (result.success) {
-        currentUser.username = newUsername.toLowerCase();
-        updateUserUI();
-        closeModal();
-        showToast('Юзернейм изменён', 'success');
-    } else {
-        showToast(result.error, 'error');
-    }
+        AuthService.updateUsername(newUsername, password).then(function(result) {
+            if (result.success) {
+                currentUser.username = newUsername.toLowerCase();
+                updateUserUI();
+                closeModal();
+                showToast('Юзернейм изменён', 'success');
+            } else {
+                showToast(result.error, 'error');
+            }
+        });
+    });
 }
 
 function openDisplayNameModal() {
     var currentName = currentUser ? currentUser.displayName : '';
-    var content = '<form id="displayNameForm" onsubmit="handleDisplayNameSubmit(event)">' +
+    var content = 
+        '<form id="displayNameModalForm">' +
         '<div class="input-group">' +
-        '<input type="text" id="newDisplayName" required placeholder=" " minlength="2" maxlength="32" value="' + currentName + '">' +
+        '<input type="text" id="newDisplayNameInput" required minlength="2" maxlength="32" value="' + currentName + '">' +
         '<label>Новое имя</label>' +
         '<div class="input-highlight"></div>' +
         '</div>' +
         '<div class="modal-actions">' +
-        '<button type="button" class="modal-btn secondary" onclick="closeModal()">Отмена</button>' +
+        '<button type="button" class="modal-btn secondary" id="cancelDisplayNameBtn">Отмена</button>' +
         '<button type="submit" class="modal-btn primary">Сохранить</button>' +
         '</div>' +
         '</form>';
+    
     openModal('Изменить имя', content);
-}
 
-async function handleDisplayNameSubmit(e) {
-    e.preventDefault();
-    const newDisplayName = document.getElementById('newDisplayName').value.trim();
+    document.getElementById('cancelDisplayNameBtn').addEventListener('click', closeModal);
+    
+    document.getElementById('displayNameModalForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        var newDisplayName = document.getElementById('newDisplayNameInput').value.trim();
 
-    if (!newDisplayName) {
-        showToast('Введите имя', 'error');
-        return;
-    }
+        if (!newDisplayName) {
+            showToast('Введите имя', 'error');
+            return;
+        }
 
-    const result = await AuthService.updateDisplayName(newDisplayName);
-    if (result.success) {
-        currentUser.displayName = newDisplayName;
-        updateUserUI();
-        closeModal();
-        showToast('Имя изменено', 'success');
-    } else {
-        showToast(result.error, 'error');
-    }
+        AuthService.updateDisplayName(newDisplayName).then(function(result) {
+            if (result.success) {
+                currentUser.displayName = newDisplayName;
+                updateUserUI();
+                closeModal();
+                showToast('Имя изменено', 'success');
+            } else {
+                showToast(result.error, 'error');
+            }
+        });
+    });
 }
 
 function openPasswordModal() {
-    var content = '<form id="passwordForm" onsubmit="handlePasswordSubmit(event)">' +
+    var content = 
+        '<form id="passwordModalForm">' +
         '<div class="input-group">' +
-        '<input type="password" id="currentPassword" required placeholder=" ">' +
+        '<input type="password" id="currentPasswordInput" required>' +
         '<label>Текущий пароль</label>' +
         '<div class="input-highlight"></div>' +
         '</div>' +
         '<div class="input-group">' +
-        '<input type="password" id="newPassword" required placeholder=" " minlength="6">' +
+        '<input type="password" id="newPasswordInput" required minlength="6">' +
         '<label>Новый пароль</label>' +
         '<div class="input-highlight"></div>' +
         '</div>' +
         '<div class="input-group">' +
-        '<input type="password" id="confirmNewPassword" required placeholder=" " minlength="6">' +
-        '<label>Подтвердите новый пароль</label>' +
+        '<input type="password" id="confirmPasswordInput" required minlength="6">' +
+        '<label>Подтвердите пароль</label>' +
         '<div class="input-highlight"></div>' +
         '</div>' +
         '<div class="modal-actions">' +
-        '<button type="button" class="modal-btn secondary" onclick="closeModal()">Отмена</button>' +
+        '<button type="button" class="modal-btn secondary" id="cancelPasswordBtn">Отмена</button>' +
         '<button type="submit" class="modal-btn primary">Сохранить</button>' +
         '</div>' +
         '</form>';
+    
     openModal('Изменить пароль', content);
-}
 
-async function handlePasswordSubmit(e) {
-    e.preventDefault();
-    const currentPassword = document.getElementById('currentPassword').value;
-    const newPassword = document.getElementById('newPassword').value;
-    const confirmNewPassword = document.getElementById('confirmNewPassword').value;
+    document.getElementById('cancelPasswordBtn').addEventListener('click', closeModal);
+    
+    document.getElementById('passwordModalForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        var currentPassword = document.getElementById('currentPasswordInput').value;
+        var newPassword = document.getElementById('newPasswordInput').value;
+        var confirmPassword = document.getElementById('confirmPasswordInput').value;
 
-    if (newPassword !== confirmNewPassword) {
-        showToast('Пароли не совпадают', 'error');
-        return;
-    }
+        if (newPassword !== confirmPassword) {
+            showToast('Пароли не совпадают', 'error');
+            return;
+        }
 
-    if (newPassword.length < 6) {
-        showToast('Пароль должен быть минимум 6 символов', 'error');
-        return;
-    }
+        if (newPassword.length < 6) {
+            showToast('Пароль должен быть минимум 6 символов', 'error');
+            return;
+        }
 
-    const result = await AuthService.updatePassword(currentPassword, newPassword);
-    if (result.success) {
-        closeModal();
-        showToast('Пароль изменён', 'success');
-    } else {
-        showToast(result.error, 'error');
-    }
+        AuthService.updatePassword(currentPassword, newPassword).then(function(result) {
+            if (result.success) {
+                closeModal();
+                showToast('Пароль изменён', 'success');
+            } else {
+                showToast(result.error, 'error');
+            }
+        });
+    });
 }
