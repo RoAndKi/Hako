@@ -1094,32 +1094,58 @@ function showToast(msg, type) {
     }, 3000);
 }
 
+function escapeHtml(text) {
+    if (!text) return text;
+    return text
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    var k = 1024;
+    var sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    var i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
 function openModal(title, content) {
-    document.getElementById('modalTitle').textContent = title;
-    document.getElementById('modalContent').innerHTML = content;
-    document.getElementById('modalOverlay').classList.remove('hidden');
-    document.body.style.overflow = 'hidden';
+    var titleEl = document.getElementById('modalTitle');
+    var contentEl = document.getElementById('modalContent');
+    var overlay = document.getElementById('modalOverlay');
+    
+    if (titleEl) titleEl.textContent = title;
+    if (contentEl) contentEl.innerHTML = content;
+    if (overlay) {
+        overlay.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+    }
 }
 
 function closeModal() {
-    document.getElementById('modalOverlay').classList.add('hidden');
-    document.body.style.overflow = '';
+    var overlay = document.getElementById('modalOverlay');
+    if (overlay) {
+        overlay.classList.add('hidden');
+        document.body.style.overflow = '';
+    }
 }
 
-function openConfirmModal(title, message, onConfirm) {
-    var content = 
-        '<div class="confirm-modal-content">' +
-            '<p>' + message + '</p>' +
-            '<div class="modal-actions">' +
-                '<button type="button" class="modal-btn secondary" id="cancelConfirmBtn">Отмена</button>' +
-                '<button type="button" class="modal-btn danger" id="confirmBtn">Удалить</button>' +
-            '</div>' +
-        '</div>';
+function initModal() {
+    var overlay = document.getElementById('modalOverlay');
+    var closeBtn = document.getElementById('modalCloseBtn');
     
-    openModal(title, content);
-
-    document.getElementById('cancelConfirmBtn').addEventListener('click', closeModal);
-    document.getElementById('confirmBtn').addEventListener('click', onConfirm);
+    if (overlay) {
+        overlay.addEventListener('click', function(e) {
+            if (e.target === overlay) closeModal();
+        });
+    }
+    
+    if (closeBtn) {
+        closeBtn.addEventListener('click', closeModal);
+    }
 }
 
 function openDisplayNameModal() {
@@ -1143,11 +1169,7 @@ function openDisplayNameModal() {
     document.getElementById('displayNameModalForm').addEventListener('submit', function(e) {
         e.preventDefault();
         var newDisplayName = document.getElementById('newDisplayNameInput').value.trim();
-
-        if (!newDisplayName) {
-            showToast('Введите имя', 'error');
-            return;
-        }
+        if (!newDisplayName) { showToast('Введите имя', 'error'); return; }
 
         AuthService.updateDisplayName(newDisplayName).then(function(result) {
             if (result.success) {
@@ -1188,15 +1210,7 @@ function openUsernameModal() {
         var newUsername = document.getElementById('newUsernameInput').value.trim();
         var password = document.getElementById('usernamePasswordInput').value;
 
-        if (!newUsername || !password) {
-            showToast('Заполните все поля', 'error');
-            return;
-        }
-
-        if (!/^[a-zA-Z0-9_]+$/.test(newUsername)) {
-            showToast('Только буквы, цифры и _', 'error');
-            return;
-        }
+        if (!newUsername || !password) { showToast('Заполните все поля', 'error'); return; }
 
         AuthService.updateUsername(newUsername, password).then(function(result) {
             if (result.success) {
@@ -1238,21 +1252,14 @@ function openPasswordModal() {
     
     document.getElementById('passwordModalForm').addEventListener('submit', function(e) {
         e.preventDefault();
-        var currentPassword = document.getElementById('currentPasswordInput').value;
-        var newPassword = document.getElementById('newPasswordInput').value;
-        var confirmPassword = document.getElementById('confirmPasswordInput').value;
+        var current = document.getElementById('currentPasswordInput').value;
+        var newPass = document.getElementById('newPasswordInput').value;
+        var confirmPass = document.getElementById('confirmPasswordInput').value;
 
-        if (newPassword !== confirmPassword) {
-            showToast('Пароли не совпадают', 'error');
-            return;
-        }
+        if (newPass !== confirmPass) { showToast('Пароли не совпадают', 'error'); return; }
+        if (newPass.length < 6) { showToast('Пароль мин. 6 символов', 'error'); return; }
 
-        if (newPassword.length < 6) {
-            showToast('Пароль минимум 6 символов', 'error');
-            return;
-        }
-
-        AuthService.updatePassword(currentPassword, newPassword).then(function(result) {
+        AuthService.updatePassword(current, newPass).then(function(result) {
             if (result.success) {
                 closeModal();
                 showToast('Пароль изменён', 'success');
@@ -1266,10 +1273,10 @@ function openPasswordModal() {
 function openAddFriendModal() {
     var content = 
         '<form id="addFriendForm">' +
-            '<p class="modal-desc">Введите юзернейм или ID пользователя</p>' +
+            '<p class="modal-desc">Введите юзернейм пользователя (без @)</p>' +
             '<div class="input-group">' +
                 '<input type="text" id="friendSearchInput" required placeholder=" ">' +
-                '<label>Юзернейм или ID</label>' +
+                '<label>Юзернейм</label>' +
             '</div>' +
             '<div id="searchResult"></div>' +
             '<div class="modal-actions">' +
@@ -1284,101 +1291,74 @@ function openAddFriendModal() {
     
     document.getElementById('addFriendForm').addEventListener('submit', function(e) {
         e.preventDefault();
-        var searchQuery = document.getElementById('friendSearchInput').value.trim().toLowerCase();
-        
-        if (!searchQuery) {
-            showToast('Введите юзернейм или ID', 'error');
-            return;
-        }
-
-        searchQuery = searchQuery.replace('@', '');
+        var query = document.getElementById('friendSearchInput').value.trim().toLowerCase().replace('@', '');
+        if (!query) return;
 
         var resultDiv = document.getElementById('searchResult');
         resultDiv.innerHTML = '<div class="loading-spinner small"></div>';
 
-        db.collection('usernames').doc(searchQuery).get().then(function(doc) {
-            if (doc.exists) {
-                return db.collection('users').doc(doc.data().userId).get();
-            } else {
-                return db.collection('users').doc(searchQuery).get();
+        db.collection('usernames').doc(query).get().then(function(doc) {
+            if (!doc.exists) {
+                resultDiv.innerHTML = '<p class="search-error">Пользователь не найден</p>';
+                return;
             }
+
+            return db.collection('users').doc(doc.data().userId).get();
         }).then(function(userDoc) {
-            if (userDoc && userDoc.exists) {
-                var user = userDoc.data();
-                
-                if (user.id === currentUser.id) {
-                    resultDiv.innerHTML = '<p class="search-error">Нельзя добавить себя</p>';
-                    return;
-                }
+            if (!userDoc || !userDoc.exists) return;
+            var user = userDoc.data();
 
-                var isFriend = currentUser.friends && currentUser.friends.includes(user.id);
-                var avatarContent = user.avatar 
-                    ? '<img src="' + user.avatar + '" alt="Avatar">'
-                    : '<span>' + user.displayName.charAt(0).toUpperCase() + '</span>';
-                
-                resultDiv.innerHTML = 
-                    '<div class="search-result-item">' +
-                        '<div class="friend-avatar">' + avatarContent + '</div>' +
-                        '<div class="friend-info">' +
-                            '<span class="friend-name">' + user.displayName + '</span>' +
-                            '<span class="friend-username">@' + user.username + '</span>' +
-                        '</div>' +
-                        (isFriend ? '<span class="already-friend">Уже в друзьях</span>' : 
-                        '<button type="button" class="modal-btn primary small" id="sendRequestBtn">Добавить</button>') +
-                    '</div>';
+            if (user.id === currentUser.id) {
+                resultDiv.innerHTML = '<p class="search-error">Это вы!</p>';
+                return;
+            }
 
-                if (!isFriend) {
-                    document.getElementById('sendRequestBtn').addEventListener('click', function() {
+            var isFriend = currentUser.friends && currentUser.friends.includes(user.id);
+            var isRequested = currentUser.friendRequests && currentUser.friendRequests.includes(user.id);
+
+            var btnHtml = isFriend ? '<span class="already-friend">Уже в друзьях</span>' : 
+                          '<button type="button" class="modal-btn primary small" id="sendRequestBtn">Добавить</button>';
+
+            var avatar = user.avatar 
+                ? '<img src="' + user.avatar + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">' 
+                : '<span>' + user.displayName.charAt(0).toUpperCase() + '</span>';
+
+            resultDiv.innerHTML = 
+                '<div class="search-result-item">' +
+                    '<div class="friend-avatar" style="width:40px;height:40px;">' + avatar + '</div>' +
+                    '<div class="friend-info" style="margin-left:10px;">' +
+                        '<div class="friend-name">' + user.displayName + '</div>' +
+                        '<div class="friend-username">@' + user.username + '</div>' +
+                    '</div>' +
+                    btnHtml +
+                '</div>';
+
+            if (!isFriend) {
+                var btn = document.getElementById('sendRequestBtn');
+                if (btn) {
+                    btn.addEventListener('click', function() {
                         sendFriendRequest(user.id);
                     });
                 }
-            } else {
-                resultDiv.innerHTML = '<p class="search-error">Пользователь не найден</p>';
             }
-        }).catch(function(error) {
-            console.error(error);
+        }).catch(function(err) {
+            console.error(err);
             resultDiv.innerHTML = '<p class="search-error">Ошибка поиска</p>';
         });
     });
 }
 
-function sendFriendRequest(targetUserId) {
-    var resultDiv = document.getElementById('searchResult');
-    if (resultDiv) {
-        resultDiv.innerHTML = '<div class="loading-spinner small"></div>';
-    }
-
-    db.collection('users').doc(targetUserId).get().then(function(doc) {
-        if (!doc.exists) {
-            if (resultDiv) resultDiv.innerHTML = '<p class="search-error">Пользователь не найден</p>';
-            return Promise.reject('not_found');
-        }
-
-        var targetUser = doc.data();
-        
-        if (targetUser.friends && targetUser.friends.includes(currentUser.id)) {
-            closeModal();
-            showToast('Вы уже друзья', 'info');
-            return Promise.reject('already_friends');
-        }
-
-        if (targetUser.friendRequests && targetUser.friendRequests.includes(currentUser.id)) {
-            closeModal();
-            showToast('Заявка уже отправлена ранее', 'info');
-            return Promise.reject('already_sent');
-        }
-
-        return db.collection('users').doc(targetUserId).update({
-            friendRequests: firebase.firestore.FieldValue.arrayUnion(currentUser.id)
-        });
-    }).then(function() {
-        closeModal();
-        showToast('Заявка отправлена!', 'success');
-    }).catch(function(error) {
-        if (error === 'not_found' || error === 'already_friends' || error === 'already_sent') {
-            return;
-        }
-        console.error(error);
-        if (resultDiv) resultDiv.innerHTML = '<p class="search-error">Ошибка отправки</p>';
-    });
+function openConfirmModal(title, message, onConfirm) {
+    var content = 
+        '<div class="confirm-modal-content">' +
+            '<p>' + message + '</p>' +
+            '<div class="modal-actions">' +
+                '<button type="button" class="modal-btn secondary" id="cancelConfirmBtn">Отмена</button>' +
+                '<button type="button" class="modal-btn danger" id="confirmBtn">Подтвердить</button>' +
+            '</div>' +
+        '</div>';
+    
+    openModal(title, content);
+    document.getElementById('cancelConfirmBtn').addEventListener('click', closeModal);
+    document.getElementById('confirmBtn').addEventListener('click', onConfirm);
 }
