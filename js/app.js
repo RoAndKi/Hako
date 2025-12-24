@@ -261,7 +261,15 @@ function initNavigation() {
     var navItems = document.querySelectorAll('.nav-item');
 
     navItems.forEach(function(item) {
-        item.addEventListener('click', function() {
+        item.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            var section = item.dataset.section;
+            
+            if (section === 'chats' && currentChatId) {
+                return;
+            }
+
             if (chatUnsubscribe) {
                 chatUnsubscribe();
                 chatUnsubscribe = null;
@@ -277,21 +285,19 @@ function initNavigation() {
                 s.classList.remove('active');
             });
             
-            var sectionId = item.dataset.section + 'Section';
-            var section = document.getElementById(sectionId);
-            if (section) {
-                section.classList.add('active');
+            var sectionId = section + 'Section';
+            var sectionEl = document.getElementById(sectionId);
+            if (sectionEl) {
+                sectionEl.classList.add('active');
             }
 
-            if (item.dataset.section === 'chats') {
+            if (section === 'chats') {
                 showChatsListView();
             }
 
-            updateMobileNav(item.dataset.section);
+            updateMobileNav(section);
         });
     });
-
-    initGoToFriendsBtn();
 }
 
 function initGoToFriendsBtn() {
@@ -978,7 +984,9 @@ function openChat(friendId) {
                 '</div>' +
             '</div>';
 
-        document.getElementById('backToChatsBtn').addEventListener('click', function() {
+        document.getElementById('backToChatsBtn').addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
             if (chatUnsubscribe) {
                 chatUnsubscribe();
                 chatUnsubscribe = null;
@@ -987,12 +995,14 @@ function openChat(friendId) {
             showChatsListView();
         });
 
-        document.getElementById('sendMessageBtn').addEventListener('click', function() {
+        document.getElementById('sendMessageBtn').addEventListener('click', function(e) {
+            e.preventDefault();
             sendMessage(friendId);
         });
 
         document.getElementById('chatInput').addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
+                e.preventDefault();
                 sendMessage(friendId);
             }
         });
@@ -1004,8 +1014,6 @@ function openChat(friendId) {
         }, { merge: true });
 
         loadMessages(friendId);
-
-        document.querySelector('[data-section="chats"]').click();
 
     }).catch(function(error) {
         console.error(error);
@@ -1056,6 +1064,13 @@ function loadMessages(friendId) {
 }
 
 function showChatsListView() {
+    currentChatId = null;
+    
+    if (chatUnsubscribe) {
+        chatUnsubscribe();
+        chatUnsubscribe = null;
+    }
+
     var chatSection = document.getElementById('chatsSection');
     chatSection.innerHTML = 
         '<div class="section-header glass-panel">' +
@@ -1074,50 +1089,70 @@ function loadChatsList() {
 
     container.innerHTML = '<div class="loading-spinner"></div>';
 
-    if (!currentUser.friends || currentUser.friends.length === 0) {
-        container.innerHTML = 
-            '<div class="empty-state">' +
-                '<div class="empty-icon">' +
-                    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">' +
-                        '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>' +
-                    '</svg>' +
-                '</div>' +
-                '<h3>Нет чатов</h3>' +
-                '<p>Добавьте друзей, чтобы начать общение</p>' +
-                '<button type="button" class="btn-primary" id="goToFriendsBtn">Найти друзей</button>' +
-            '</div>';
-        initGoToFriendsBtn();
-        return;
-    }
+    db.collection('users').doc(currentUser.id).get().then(function(doc) {
+        if (doc.exists) {
+            var userData = doc.data();
+            currentUser.friends = userData.friends || [];
+        }
 
-    var promises = currentUser.friends.map(function(friendId) {
-        return db.collection('users').doc(friendId).get();
-    });
+        if (!currentUser.friends || currentUser.friends.length === 0) {
+            container.innerHTML = 
+                '<div class="empty-state">' +
+                    '<div class="empty-icon">' +
+                        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">' +
+                            '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>' +
+                        '</svg>' +
+                    '</div>' +
+                    '<h3>Нет чатов</h3>' +
+                    '<p>Добавьте друзей, чтобы начать общение</p>' +
+                    '<button type="button" class="btn-primary" id="goToFriendsBtn">Найти друзей</button>' +
+                '</div>';
+            
+            var goToFriendsBtn = document.getElementById('goToFriendsBtn');
+            if (goToFriendsBtn) {
+                goToFriendsBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    var friendsNav = document.querySelector('[data-section="friends"]');
+                    if (friendsNav) friendsNav.click();
+                });
+            }
+            return;
+        }
 
-    Promise.all(promises).then(function(docs) {
-        container.innerHTML = '';
-        docs.forEach(function(friendDoc) {
-            if (friendDoc.exists) {
-                var friend = friendDoc.data();
-                var avatarContent = friend.avatar 
-                    ? '<img src="' + friend.avatar + '" alt="Avatar">'
-                    : '<span>' + friend.displayName.charAt(0).toUpperCase() + '</span>';
+        var promises = currentUser.friends.map(function(friendId) {
+            return db.collection('users').doc(friendId).get();
+        });
 
-                container.innerHTML += 
-                    '<div class="friend-item chat-list-item" data-id="' + friend.id + '">' +
+        Promise.all(promises).then(function(docs) {
+            container.innerHTML = '';
+            
+            docs.forEach(function(friendDoc) {
+                if (friendDoc.exists) {
+                    var friend = friendDoc.data();
+                    var avatarContent = friend.avatar 
+                        ? '<img src="' + friend.avatar + '" alt="Avatar">'
+                        : '<span>' + friend.displayName.charAt(0).toUpperCase() + '</span>';
+
+                    var chatItem = document.createElement('div');
+                    chatItem.className = 'friend-item chat-list-item';
+                    chatItem.setAttribute('data-friend-id', friend.id);
+                    chatItem.innerHTML = 
                         '<div class="friend-avatar">' + avatarContent + '</div>' +
                         '<div class="friend-info">' +
                             '<span class="friend-name">' + friend.displayName + '</span>' +
                             '<span class="friend-username">@' + friend.username + '</span>' +
-                        '</div>' +
-                    '</div>';
-            }
-        });
+                        '</div>';
+                    
+                    chatItem.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        var fId = this.getAttribute('data-friend-id');
+                        openChat(fId);
+                    });
 
-        var chatItems = document.querySelectorAll('.chat-list-item');
-        chatItems.forEach(function(item) {
-            item.addEventListener('click', function() {
-                openChat(item.dataset.id);
+                    container.appendChild(chatItem);
+                }
             });
         });
     });
