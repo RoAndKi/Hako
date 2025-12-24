@@ -703,33 +703,37 @@ function openUserProfileModal(user) {
     document.getElementById('copyUserIdBtn').addEventListener('click', function() { copyToClipboard(user.id); });
 }
 
-function loadMessages() {
-    var container = document.getElementById('chatMessages');
-    if (!container || !currentChatId) return;
+function loadMessages(friendId) {
+    var chatId = getChatId(friendId);
+    var messagesContainer = document.getElementById('chatMessages');
+    
+    if (!messagesContainer) return;
 
-    chatUnsubscribe = db.collection('chats').doc(currentChatId).collection('messages').orderBy('createdAt', 'asc').onSnapshot(function(snapshot) {
-        var cont = document.getElementById('chatMessages');
-        if (!cont) return;
+    if (chatUnsubscribe) chatUnsubscribe();
 
-        if (snapshot.empty) {
-            cont.innerHTML = '<div class="empty-state" style="padding:40px 20px;"><p style="color:var(--text-tertiary);">Начните общение!</p></div>';
-            return;
-        }
+    chatUnsubscribe = db.collection('chats').doc(chatId)
+        .collection('messages')
+        .orderBy('createdAt', 'asc')
+        .onSnapshot(function(snapshot) {
+            var container = document.getElementById('chatMessages');
+            if (!container) return;
 
-        cont.innerHTML = '';
-        snapshot.forEach(function(doc) {
-            var msg = doc.data();
-            if (msg.deletedFor && msg.deletedFor.includes(currentUser.id)) return;
-            
-            var msgEl = createMessageElement(doc.id, msg);
-            cont.appendChild(msgEl);
-
-            if (msg.senderId !== currentUser.id && msg.status !== 'read') {
-                db.collection('chats').doc(currentChatId).collection('messages').doc(doc.id).update({ status: 'read' });
+            if (snapshot.empty) {
+                container.innerHTML = '<div style="text-align:center; padding: 20px; opacity: 0.5;">Нет сообщений</div>';
+                return;
             }
+
+            container.innerHTML = '';
+            snapshot.forEach(function(doc) {
+                var message = doc.data();
+
+                if (message.deletedFor && message.deletedFor.includes(currentUser.id)) return;
+                
+                container.appendChild(createMessageElement(doc.id, message));
+            });
+
+            container.scrollTop = container.scrollHeight;
         });
-        cont.scrollTop = cont.scrollHeight;
-    }, function(e) { console.error(e); });
 }
 
 function createMessageElement(msgId, msg) {
@@ -900,6 +904,8 @@ function sendTextMessage(text, attachment) {
     var input = document.getElementById('chatInput');
     if (input) input.value = '';
 
+    if (!text && !attachment) return;
+
     var msgData = {
         senderId: currentUser.id,
         createdAt: firebase.firestore.FieldValue.serverTimestamp(),
@@ -908,17 +914,25 @@ function sendTextMessage(text, attachment) {
 
     if (text) msgData.text = text;
     if (attachment) msgData.attachment = attachment;
+    
     if (replyingTo) {
-        msgData.replyTo = { id: replyingTo.id, senderId: replyingTo.senderId, text: replyingTo.text };
+        msgData.replyTo = { 
+            id: replyingTo.id, 
+            senderId: replyingTo.senderId, 
+            text: replyingTo.text || 'Вложение'
+        };
         cancelReply();
     }
 
     db.collection('chats').doc(currentChatId).collection('messages').add(msgData).then(function() {
         db.collection('chats').doc(currentChatId).update({
-            lastMessage: text || 'Вложение',
+            lastMessage: text || (attachment ? 'Вложение' : ''),
             lastMessageTime: firebase.firestore.FieldValue.serverTimestamp()
         });
-    }).catch(function(e) { console.error(e); showToast('Ошибка', 'error'); });
+    }).catch(function(e) { 
+        console.error(e); 
+        showToast('Ошибка: ' + e.message, 'error'); 
+    });
 }
 
 function markMessagesAsRead() {
