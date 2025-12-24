@@ -1,5 +1,7 @@
 var currentUser = null;
 var pendingVerificationEmail = null;
+var currentChatId = null;
+var chatUnsubscribe = null;
 
 document.addEventListener('DOMContentLoaded', function() {
     console.log("DOM загружен");
@@ -260,6 +262,12 @@ function initNavigation() {
 
     navItems.forEach(function(item) {
         item.addEventListener('click', function() {
+            if (chatUnsubscribe) {
+                chatUnsubscribe();
+                chatUnsubscribe = null;
+            }
+            currentChatId = null;
+
             navItems.forEach(function(i) {
                 i.classList.remove('active');
             });
@@ -273,6 +281,10 @@ function initNavigation() {
             var section = document.getElementById(sectionId);
             if (section) {
                 section.classList.add('active');
+            }
+
+            if (item.dataset.section === 'chats') {
+                showChatsListView();
             }
 
             updateMobileNav(item.dataset.section);
@@ -367,6 +379,7 @@ function initUserMenu() {
     if (menuBtn && menu) {
         menuBtn.addEventListener('click', function(e) {
             e.stopPropagation();
+            updateCompactProfileMenu();
             menu.classList.toggle('hidden');
         });
 
@@ -376,62 +389,187 @@ function initUserMenu() {
             }
         });
     }
+}
 
-    var logoutBtn = document.getElementById('logoutBtn');
-    if (logoutBtn) {
-        logoutBtn.addEventListener('click', function() {
-            if (menu) menu.classList.add('hidden');
-            AuthService.logout().then(function(result) {
-                if (result.success) {
-                    currentUser = null;
-                    showAuth();
-                    showToast('Вы вышли из аккаунта', 'info');
-                }
-            });
+function updateCompactProfileMenu() {
+    var menu = document.getElementById('userMenu');
+    if (!menu || !currentUser) return;
+
+    var avatarContent = currentUser.avatar 
+        ? '<img src="' + currentUser.avatar + '" alt="Avatar">'
+        : '<span>' + currentUser.displayName.charAt(0).toUpperCase() + '</span>';
+
+    menu.innerHTML = 
+        '<div class="compact-profile-menu">' +
+            '<div class="compact-profile-header">' +
+                '<div class="compact-avatar-container">' +
+                    '<div class="compact-avatar">' + avatarContent + '</div>' +
+                    '<label class="compact-photo-edit">' +
+                        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' +
+                            '<path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>' +
+                            '<circle cx="12" cy="13" r="4"/>' +
+                        '</svg>' +
+                        '<input type="file" accept="image/*" id="menuPhotoInput">' +
+                    '</label>' +
+                '</div>' +
+                '<div class="compact-user-info">' +
+                    '<div class="compact-displayname">' + currentUser.displayName + '</div>' +
+                    '<div class="compact-username">@' + currentUser.username + '</div>' +
+                '</div>' +
+            '</div>' +
+            '<div class="compact-menu-items">' +
+                '<button type="button" class="menu-item" id="showProfileBtn">' +
+                    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' +
+                        '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>' +
+                        '<circle cx="12" cy="7" r="4"/>' +
+                    '</svg>' +
+                    '<span>Мой профиль</span>' +
+                '</button>' +
+                '<button type="button" class="menu-item" id="copyIdBtn">' +
+                    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' +
+                        '<rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>' +
+                        '<path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>' +
+                    '</svg>' +
+                    '<span>Скопировать ID</span>' +
+                '</button>' +
+                '<div class="menu-divider"></div>' +
+                '<button type="button" class="menu-item" id="editDisplayNameBtn">' +
+                    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' +
+                        '<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>' +
+                        '<path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>' +
+                    '</svg>' +
+                    '<span>Изменить имя</span>' +
+                '</button>' +
+                '<button type="button" class="menu-item" id="editUsernameBtn">' +
+                    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' +
+                        '<circle cx="12" cy="12" r="4"/>' +
+                        '<path d="M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-3.92 7.94"/>' +
+                    '</svg>' +
+                    '<span>Изменить юзернейм</span>' +
+                '</button>' +
+                '<button type="button" class="menu-item" id="editPasswordBtn">' +
+                    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' +
+                        '<rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>' +
+                        '<path d="M7 11V7a5 5 0 0 1 10 0v4"/>' +
+                    '</svg>' +
+                    '<span>Изменить пароль</span>' +
+                '</button>' +
+                '<div class="menu-divider"></div>' +
+                '<button type="button" class="menu-item danger" id="logoutBtn">' +
+                    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' +
+                        '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>' +
+                        '<polyline points="16 17 21 12 16 7"/>' +
+                        '<line x1="21" y1="12" x2="9" y2="12"/>' +
+                    '</svg>' +
+                    '<span>Выйти</span>' +
+                '</button>' +
+            '</div>' +
+        '</div>';
+
+    var menuPhotoInput = document.getElementById('menuPhotoInput');
+    if (menuPhotoInput) {
+        menuPhotoInput.addEventListener('change', function(e) {
+            handlePhotoUpload(e.target.files[0]);
+            menu.classList.add('hidden');
         });
     }
 
-    var copyIdBtn = document.getElementById('copyIdBtn');
-    if (copyIdBtn) {
-        copyIdBtn.addEventListener('click', function() {
-            if (menu) menu.classList.add('hidden');
-            if (currentUser) {
-                copyToClipboard(currentUser.id);
+    document.getElementById('showProfileBtn').addEventListener('click', function() {
+        menu.classList.add('hidden');
+        showProfileSection();
+    });
+
+    document.getElementById('copyIdBtn').addEventListener('click', function() {
+        menu.classList.add('hidden');
+        copyToClipboard(currentUser.id);
+    });
+
+    document.getElementById('editDisplayNameBtn').addEventListener('click', function() {
+        menu.classList.add('hidden');
+        openDisplayNameModal();
+    });
+
+    document.getElementById('editUsernameBtn').addEventListener('click', function() {
+        menu.classList.add('hidden');
+        openUsernameModal();
+    });
+
+    document.getElementById('editPasswordBtn').addEventListener('click', function() {
+        menu.classList.add('hidden');
+        openPasswordModal();
+    });
+
+    document.getElementById('logoutBtn').addEventListener('click', function() {
+        menu.classList.add('hidden');
+        AuthService.logout().then(function(result) {
+            if (result.success) {
+                currentUser = null;
+                showAuth();
+                showToast('Вы вышли из аккаунта', 'info');
             }
         });
+    });
+}
+
+function handlePhotoUpload(file) {
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+        showToast('Выберите изображение', 'error');
+        return;
     }
 
-    var showProfileBtn = document.getElementById('showProfileBtn');
-    if (showProfileBtn) {
-        showProfileBtn.addEventListener('click', function() {
-            if (menu) menu.classList.add('hidden');
-            showProfileSection();
-        });
+    if (file.size > 5 * 1024 * 1024) {
+        showToast('Файл слишком большой (макс. 5MB)', 'error');
+        return;
     }
 
-    var editDisplayNameBtn = document.getElementById('editDisplayNameBtn');
-    if (editDisplayNameBtn) {
-        editDisplayNameBtn.addEventListener('click', function() {
-            if (menu) menu.classList.add('hidden');
-            openDisplayNameModal();
-        });
-    }
+    showToast('Загрузка фото...', 'info');
 
-    var editUsernameBtn = document.getElementById('editUsernameBtn');
-    if (editUsernameBtn) {
-        editUsernameBtn.addEventListener('click', function() {
-            if (menu) menu.classList.add('hidden');
-            openUsernameModal();
-        });
-    }
+    var reader = new FileReader();
+    reader.onload = function(e) {
+        var base64 = e.target.result;
 
-    var editPasswordBtn = document.getElementById('editPasswordBtn');
-    if (editPasswordBtn) {
-        editPasswordBtn.addEventListener('click', function() {
-            if (menu) menu.classList.add('hidden');
-            openPasswordModal();
-        });
-    }
+        var img = new Image();
+        img.onload = function() {
+            var canvas = document.createElement('canvas');
+            var maxSize = 200;
+            var width = img.width;
+            var height = img.height;
+
+            if (width > height) {
+                if (width > maxSize) {
+                    height *= maxSize / width;
+                    width = maxSize;
+                }
+            } else {
+                if (height > maxSize) {
+                    width *= maxSize / height;
+                    height = maxSize;
+                }
+            }
+
+            canvas.width = width;
+            canvas.height = height;
+            var ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, width, height);
+
+            var compressedBase64 = canvas.toDataURL('image/jpeg', 0.8);
+
+            db.collection('users').doc(currentUser.id).update({
+                avatar: compressedBase64
+            }).then(function() {
+                currentUser.avatar = compressedBase64;
+                updateUserUI();
+                showToast('Фото обновлено!', 'success');
+            }).catch(function(error) {
+                console.error(error);
+                showToast('Ошибка загрузки', 'error');
+            });
+        };
+        img.src = base64;
+    };
+    reader.readAsDataURL(file);
 }
 
 function showProfileSection() {
@@ -511,14 +649,36 @@ function initProfileSection() {
 function updateProfileUI() {
     if (!currentUser) return;
 
-    var avatarLetter = document.getElementById('profileAvatarLetter');
+    var profilePhotoContainer = document.querySelector('.profile-photo-container');
+    if (profilePhotoContainer) {
+        var avatarContent = currentUser.avatar 
+            ? '<img src="' + currentUser.avatar + '" alt="Avatar">'
+            : '<span id="profileAvatarLetter">' + currentUser.displayName.charAt(0).toUpperCase() + '</span>';
+
+        profilePhotoContainer.innerHTML = 
+            '<div class="profile-avatar-large">' + avatarContent + '</div>' +
+            '<label class="profile-photo-edit">' +
+                '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' +
+                    '<path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>' +
+                    '<circle cx="12" cy="13" r="4"/>' +
+                '</svg>' +
+                '<input type="file" accept="image/*" id="profilePhotoInput">' +
+            '</label>';
+
+        var profilePhotoInput = document.getElementById('profilePhotoInput');
+        if (profilePhotoInput) {
+            profilePhotoInput.addEventListener('change', function(e) {
+                handlePhotoUpload(e.target.files[0]);
+            });
+        }
+    }
+
     var displayName = document.getElementById('profileDisplayName');
     var username = document.getElementById('profileUsername');
     var userId = document.getElementById('profileUserId');
     var email = document.getElementById('profileEmail');
     var createdAt = document.getElementById('profileCreatedAt');
 
-    if (avatarLetter) avatarLetter.textContent = currentUser.displayName.charAt(0).toUpperCase();
     if (displayName) displayName.textContent = currentUser.displayName;
     if (username) username.textContent = '@' + currentUser.username;
     if (userId) userId.textContent = currentUser.id;
@@ -595,8 +755,6 @@ function loadFriends() {
                         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">' +
                             '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>' +
                             '<circle cx="9" cy="7" r="4"/>' +
-                            '<path d="M23 21v-2a4 4 0 0 0-3-3.87"/>' +
-                            '<path d="M16 3.13a4 4 0 0 1 0 7.75"/>' +
                         '</svg>' +
                     '</div>' +
                     '<h3>Нет друзей</h3>' +
@@ -644,8 +802,6 @@ function loadFriendRequests() {
                         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">' +
                             '<path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>' +
                             '<circle cx="8.5" cy="7" r="4"/>' +
-                            '<line x1="20" y1="8" x2="20" y2="14"/>' +
-                            '<line x1="23" y1="11" x2="17" y2="11"/>' +
                         '</svg>' +
                     '</div>' +
                     '<h3>Нет заявок</h3>' +
@@ -675,10 +831,12 @@ function loadFriendRequests() {
 }
 
 function createFriendItem(friend) {
+    var avatarContent = friend.avatar 
+        ? '<img src="' + friend.avatar + '" alt="Avatar">'
+        : '<span>' + friend.displayName.charAt(0).toUpperCase() + '</span>';
+
     return '<div class="friend-item" data-id="' + friend.id + '">' +
-        '<div class="friend-avatar">' +
-            '<span>' + friend.displayName.charAt(0).toUpperCase() + '</span>' +
-        '</div>' +
+        '<div class="friend-avatar">' + avatarContent + '</div>' +
         '<div class="friend-info">' +
             '<span class="friend-name">' + friend.displayName + '</span>' +
             '<span class="friend-username">@' + friend.username + '</span>' +
@@ -700,10 +858,12 @@ function createFriendItem(friend) {
 }
 
 function createRequestItem(requester) {
+    var avatarContent = requester.avatar 
+        ? '<img src="' + requester.avatar + '" alt="Avatar">'
+        : '<span>' + requester.displayName.charAt(0).toUpperCase() + '</span>';
+
     return '<div class="request-item" data-id="' + requester.id + '">' +
-        '<div class="friend-avatar">' +
-            '<span>' + requester.displayName.charAt(0).toUpperCase() + '</span>' +
-        '</div>' +
+        '<div class="friend-avatar">' + avatarContent + '</div>' +
         '<div class="friend-info">' +
             '<span class="friend-name">' + requester.displayName + '</span>' +
             '<span class="friend-username">@' + requester.username + '</span>' +
@@ -762,7 +922,17 @@ function initRequestItemButtons() {
     });
 }
 
+function getChatId(friendId) {
+    var ids = [currentUser.id, friendId].sort();
+    return ids[0] + '_' + ids[1];
+}
+
 function openChat(friendId) {
+    if (chatUnsubscribe) {
+        chatUnsubscribe();
+        chatUnsubscribe = null;
+    }
+
     db.collection('users').doc(friendId).get().then(function(doc) {
         if (!doc.exists) {
             showToast('Пользователь не найден', 'error');
@@ -770,6 +940,11 @@ function openChat(friendId) {
         }
 
         var friend = doc.data();
+        currentChatId = getChatId(friendId);
+
+        var avatarContent = friend.avatar 
+            ? '<img src="' + friend.avatar + '" alt="Avatar">'
+            : '<span>' + friend.displayName.charAt(0).toUpperCase() + '</span>';
         
         var chatSection = document.getElementById('chatsSection');
         chatSection.innerHTML = 
@@ -781,16 +956,14 @@ function openChat(friendId) {
                             '<polyline points="12 19 5 12 12 5"/>' +
                         '</svg>' +
                     '</button>' +
-                    '<div class="friend-avatar"><span>' + friend.displayName.charAt(0).toUpperCase() + '</span></div>' +
+                    '<div class="friend-avatar">' + avatarContent + '</div>' +
                     '<div class="chat-header-info">' +
                         '<div class="chat-header-name">' + friend.displayName + '</div>' +
                         '<div class="chat-header-status">@' + friend.username + '</div>' +
                     '</div>' +
                 '</div>' +
                 '<div class="chat-messages" id="chatMessages">' +
-                    '<div class="empty-state" style="padding: 40px 20px;">' +
-                        '<p style="margin: 0;">Начните общение с ' + friend.displayName + '</p>' +
-                    '</div>' +
+                    '<div class="loading-spinner"></div>' +
                 '</div>' +
                 '<div class="chat-input-container">' +
                     '<div class="chat-input-wrapper">' +
@@ -806,6 +979,11 @@ function openChat(friendId) {
             '</div>';
 
         document.getElementById('backToChatsBtn').addEventListener('click', function() {
+            if (chatUnsubscribe) {
+                chatUnsubscribe();
+                chatUnsubscribe = null;
+            }
+            currentChatId = null;
             showChatsListView();
         });
 
@@ -819,12 +997,62 @@ function openChat(friendId) {
             }
         });
 
+        db.collection('chats').doc(currentChatId).set({
+            participants: [currentUser.id, friendId],
+            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+
+        loadMessages(friendId);
+
         document.querySelector('[data-section="chats"]').click();
 
     }).catch(function(error) {
         console.error(error);
         showToast('Ошибка открытия чата', 'error');
     });
+}
+
+function loadMessages(friendId) {
+    var chatId = getChatId(friendId);
+    var messagesContainer = document.getElementById('chatMessages');
+
+    chatUnsubscribe = db.collection('chats').doc(chatId)
+        .collection('messages')
+        .orderBy('createdAt', 'asc')
+        .onSnapshot(function(snapshot) {
+            if (snapshot.empty) {
+                messagesContainer.innerHTML = 
+                    '<div class="empty-state" style="padding: 40px 20px;">' +
+                        '<p style="margin: 0;">Начните общение!</p>' +
+                    '</div>';
+                return;
+            }
+
+            messagesContainer.innerHTML = '';
+            snapshot.forEach(function(doc) {
+                var message = doc.data();
+                var isSent = message.senderId === currentUser.id;
+                var time = '';
+                
+                if (message.createdAt) {
+                    var date = message.createdAt.toDate();
+                    time = date.getHours().toString().padStart(2, '0') + ':' + 
+                           date.getMinutes().toString().padStart(2, '0');
+                }
+
+                messagesContainer.innerHTML += 
+                    '<div class="message ' + (isSent ? 'sent' : 'received') + '">' +
+                        '<div>' + escapeHtml(message.text) + '</div>' +
+                        '<div class="message-time">' + time + '</div>' +
+                    '</div>';
+            });
+
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }, function(error) {
+            console.error("Messages error:", error);
+            messagesContainer.innerHTML = '<p class="search-error">Ошибка загрузки сообщений</p>';
+        });
 }
 
 function showChatsListView() {
@@ -834,19 +1062,65 @@ function showChatsListView() {
             '<h1>Чаты</h1>' +
         '</div>' +
         '<div class="section-content">' +
+            '<div id="chatsList"></div>' +
+        '</div>';
+
+    loadChatsList();
+}
+
+function loadChatsList() {
+    var container = document.getElementById('chatsList');
+    if (!container || !currentUser) return;
+
+    container.innerHTML = '<div class="loading-spinner"></div>';
+
+    if (!currentUser.friends || currentUser.friends.length === 0) {
+        container.innerHTML = 
             '<div class="empty-state">' +
                 '<div class="empty-icon">' +
                     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">' +
                         '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>' +
                     '</svg>' +
                 '</div>' +
-                '<h3>Нет активных чатов</h3>' +
+                '<h3>Нет чатов</h3>' +
                 '<p>Добавьте друзей, чтобы начать общение</p>' +
                 '<button type="button" class="btn-primary" id="goToFriendsBtn">Найти друзей</button>' +
-            '</div>' +
-        '</div>';
+            '</div>';
+        initGoToFriendsBtn();
+        return;
+    }
 
-    initGoToFriendsBtn();
+    var promises = currentUser.friends.map(function(friendId) {
+        return db.collection('users').doc(friendId).get();
+    });
+
+    Promise.all(promises).then(function(docs) {
+        container.innerHTML = '';
+        docs.forEach(function(friendDoc) {
+            if (friendDoc.exists) {
+                var friend = friendDoc.data();
+                var avatarContent = friend.avatar 
+                    ? '<img src="' + friend.avatar + '" alt="Avatar">'
+                    : '<span>' + friend.displayName.charAt(0).toUpperCase() + '</span>';
+
+                container.innerHTML += 
+                    '<div class="friend-item chat-list-item" data-id="' + friend.id + '">' +
+                        '<div class="friend-avatar">' + avatarContent + '</div>' +
+                        '<div class="friend-info">' +
+                            '<span class="friend-name">' + friend.displayName + '</span>' +
+                            '<span class="friend-username">@' + friend.username + '</span>' +
+                        '</div>' +
+                    '</div>';
+            }
+        });
+
+        var chatItems = document.querySelectorAll('.chat-list-item');
+        chatItems.forEach(function(item) {
+            item.addEventListener('click', function() {
+                openChat(item.dataset.id);
+            });
+        });
+    });
 }
 
 function sendMessage(friendId) {
@@ -855,24 +1129,24 @@ function sendMessage(friendId) {
     
     if (!message) return;
 
-    var messagesContainer = document.getElementById('chatMessages');
-    
-    var emptyState = messagesContainer.querySelector('.empty-state');
-    if (emptyState) {
-        emptyState.remove();
-    }
+    var chatId = getChatId(friendId);
 
-    var now = new Date();
-    var time = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
-
-    messagesContainer.innerHTML += 
-        '<div class="message sent">' +
-            '<div>' + escapeHtml(message) + '</div>' +
-            '<div class="message-time">' + time + '</div>' +
-        '</div>';
-
-    input.value = '';
-    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    db.collection('chats').doc(chatId).collection('messages').add({
+        text: message,
+        senderId: currentUser.id,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    }).then(function() {
+        input.value = '';
+        
+        db.collection('chats').doc(chatId).update({
+            lastMessage: message,
+            lastMessageTime: firebase.firestore.FieldValue.serverTimestamp(),
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+    }).catch(function(error) {
+        console.error("Send message error:", error);
+        showToast('Ошибка отправки', 'error');
+    });
 }
 
 function escapeHtml(text) {
@@ -982,11 +1256,18 @@ function updateUserUI() {
 
     var displayNameEl = document.getElementById('userDisplayName');
     var usernameEl = document.getElementById('userUsername');
-    var avatarEl = document.getElementById('userAvatarLetter');
+    var avatarEl = document.getElementById('userAvatar');
     
     if (displayNameEl) displayNameEl.textContent = currentUser.displayName;
     if (usernameEl) usernameEl.textContent = '@' + currentUser.username;
-    if (avatarEl) avatarEl.textContent = currentUser.displayName.charAt(0).toUpperCase();
+    
+    if (avatarEl) {
+        if (currentUser.avatar) {
+            avatarEl.innerHTML = '<img src="' + currentUser.avatar + '" alt="Avatar">';
+        } else {
+            avatarEl.innerHTML = '<span id="userAvatarLetter">' + currentUser.displayName.charAt(0).toUpperCase() + '</span>';
+        }
+    }
 
     updateProfileUI();
 }
@@ -1283,10 +1564,13 @@ function openAddFriendModal() {
                 }
 
                 var isFriend = currentUser.friends && currentUser.friends.includes(user.id);
+                var avatarContent = user.avatar 
+                    ? '<img src="' + user.avatar + '" alt="Avatar">'
+                    : '<span>' + user.displayName.charAt(0).toUpperCase() + '</span>';
                 
                 resultDiv.innerHTML = 
                     '<div class="search-result-item">' +
-                        '<div class="friend-avatar"><span>' + user.displayName.charAt(0).toUpperCase() + '</span></div>' +
+                        '<div class="friend-avatar">' + avatarContent + '</div>' +
                         '<div class="friend-info">' +
                             '<span class="friend-name">' + user.displayName + '</span>' +
                             '<span class="friend-username">@' + user.username + '</span>' +
